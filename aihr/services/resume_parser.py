@@ -29,12 +29,33 @@ DEFAULT_SKILL_LEXICON = {
     "operations",
     "data analysis",
     "figma",
+    "招聘",
+    "招聘运营",
+    "人才获取",
+    "人才招聘",
+    "入职",
+    "薪酬",
+    "薪资",
+    "员工关系",
+    "劳动法",
+    "面试",
+    "组织协同",
+    "数据分析",
+    "项目管理",
+    "沟通",
+    "excel",
 }
 
 EMAIL_RE = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.I)
 PHONE_RE = re.compile(r"(?:(?:\+?\d{1,3})?[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{4}")
-YEARS_RE = re.compile(r"(\d{1,2})(?:\+)?\s*(?:years|yrs|year)\b", re.I)
-LOCATION_RE = re.compile(r"(?:location|city|based in)[:\s]+([A-Za-z][A-Za-z\s,/-]{1,40})", re.I)
+YEARS_RE = re.compile(
+    r"(\d{1,2})(?:\+)?\s*(?:years|yrs|year)\b|(\d{1,2})(?:\+)?\s*(?:年经验|年以上|年工作经验|年)",
+    re.I,
+)
+LOCATION_RE = re.compile(
+    r"(?:location|city|based in|现居|所在(?:地|城市)|工作地)[:：\s]+([A-Za-z\u4e00-\u9fff][A-Za-z\u4e00-\u9fff\s,/-]{1,40})",
+    re.I,
+)
 
 
 def extract_text_from_file(file_path: str | Path) -> str:
@@ -58,7 +79,14 @@ def parse_resume_text(text: str, skill_lexicon: Iterable[str] | None = None) -> 
 
     emails = sorted(set(match.group(0) for match in EMAIL_RE.finditer(normalized_text)))
     phones = sorted(set(clean_phone(match.group(0)) for match in PHONE_RE.finditer(normalized_text)))
-    years_of_experience = max((int(match.group(1)) for match in YEARS_RE.finditer(normalized_text)), default=0)
+    years_of_experience = max(
+        (
+            int(match.group(1) or match.group(2))
+            for match in YEARS_RE.finditer(normalized_text)
+            if match.group(1) or match.group(2)
+        ),
+        default=0,
+    )
     city = extract_city(normalized_text)
     skills = detect_skills(normalized_text, lexicon)
     name = infer_name(lines, emails, phones)
@@ -98,6 +126,8 @@ def infer_name(lines: list[str], emails: list[str], phones: list[str]) -> str:
         if re.search(r"\d", line):
             continue
         words = line.split()
+        if re.fullmatch(r"[\u4e00-\u9fff]{2,6}", line.strip()):
+            return line.strip()
         if 1 < len(words) <= 4:
             return line.strip()
     return ""
@@ -110,4 +140,3 @@ def detect_skills(text: str, lexicon: set[str]) -> list[str]:
         if skill in lowered:
             found.append(skill)
     return found
-

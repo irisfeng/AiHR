@@ -1,0 +1,4 @@
+services:
+  frappe:
+    volumes:
+      - ../..:/workspace/aihr:cached

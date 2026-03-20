@@ -10,10 +10,12 @@ env/
 node_modules/
 dist/
 build/
+*.egg-info/
 coverage/
 htmlcov/
 .frappe_docker/
 development/
 logs/
 sites/
-
+.playwright-cli/
+output/playwright/

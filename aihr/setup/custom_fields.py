@@ -144,11 +144,17 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
                 "insert_after": "aihr_candidate_ops_section",
             },
             {
+                "fieldname": "aihr_summary_card_html",
+                "fieldtype": "HTML",
+                "label": "AI Summary Card",
+                "insert_after": "aihr_resume_text",
+            },
+            {
                 "fieldname": "aihr_ai_status",
                 "fieldtype": "Select",
                 "label": "AIHR Status",
                 "options": "Not Screened\nScreened\nManager Review\nInterview\nRejected\nOffer\nHired",
-                "insert_after": "aihr_resume_text",
+                "insert_after": "aihr_summary_card_html",
             },
             {
                 "fieldname": "aihr_match_score",
@@ -250,4 +256,3 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
             },
         ],
     }
-

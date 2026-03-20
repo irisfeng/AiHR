@@ -2,6 +2,8 @@
 
 AIHR 是一个基于 Frappe HR 二次开发的 AI 化招聘与人力运营 MVP 项目，目标不是一次性做完整 HRMS，而是优先解决国内公司在人力招聘流程中最耗时、最重复、最依赖 Excel 和人工沟通的那部分工作。
 
+项目北极星见：[docs/north-star.md](/Users/tony/Documents/GitHub/aihr/docs/north-star.md)。
+
 当前版本按“1 周可交付 MVP”思路收敛，核心目标非常明确：
 
 - 替代 Excel 维护岗位需求、候选人状态和面试进度
@@ -106,11 +108,27 @@ AIHR 不是大而全的人力资源系统一期，而是一个“招聘作战台
    - `Job Applicant`
    - `AI Screening`
 
+如果使用当前仓库推荐的本地 Docker 联调方式，可以继续执行：
+
+1. 准备 Frappe Docker 参考目录：`./scripts/bootstrap_frappe_docker.sh`
+2. 在开发容器中安装 app：`BENCH_DIR=/workspace/development/frappe-bench SITE_NAME=development.localhost ./scripts/install_local_app.sh`
+3. 启动站点服务：`./scripts/start_dev_site.sh`
+4. 灌入演示数据：`./scripts/seed_demo_site.sh`
+5. 浏览器访问：`http://development.localhost:18000`
+
+当前本地联调默认管理员账号：
+
+- 用户名：`Administrator`
+- 密码：`AIHRAdmin!2026`
+
 重点参考：
 
 - `docs/week-1-mvp.md`
 - `docs/data-model.md`
+- `docs/development-setup.md`
 - `scripts/install_local_app.sh`
+- `scripts/start_dev_site.sh`
+- `scripts/seed_demo_site.sh`
 - `scripts/preview_screening.py`
 
 ## 本地预览能力

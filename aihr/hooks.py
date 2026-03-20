@@ -19,3 +19,15 @@ add_to_apps_screen = [
 after_install = "aihr.install.after_install"
 after_migrate = "aihr.install.after_migrate"
 
+doc_events = {
+    "Job Requisition": {
+        "validate": "aihr.events.recruitment.sync_job_requisition_brief",
+    },
+    "Job Opening": {
+        "validate": "aihr.events.recruitment.sync_job_opening_pack",
+    },
+    "Job Applicant": {
+        "after_insert": "aihr.events.recruitment.auto_screen_job_applicant_after_insert",
+        "on_update": "aihr.events.recruitment.auto_screen_job_applicant_on_update",
+    },
+}
