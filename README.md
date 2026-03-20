@@ -3,6 +3,8 @@
 AIHR 是一个基于 Frappe HR 二次开发的 AI 化招聘与人力运营 MVP 项目，目标不是一次性做完整 HRMS，而是优先解决国内公司在人力招聘流程中最耗时、最重复、最依赖 Excel 和人工沟通的那部分工作。
 
 项目北极星见：[docs/north-star.md](/Users/tony/Documents/GitHub/aihr/docs/north-star.md)。
+使用手册见：[docs/user-manual.md](/Users/tony/Documents/GitHub/aihr/docs/user-manual.md)。
+国际化状态说明见：[docs/i18n-status.md](/Users/tony/Documents/GitHub/aihr/docs/i18n-status.md)。
 
 当前版本按“1 周可交付 MVP”思路收敛，核心目标非常明确：
 
