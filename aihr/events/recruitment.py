@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import frappe
+from frappe.utils import add_to_date, format_datetime, get_datetime, now_datetime
 
 from aihr.api.recruitment import screen_job_applicant
-from aihr.services.recruitment_ops import generate_requisition_agency_brief
+from aihr.services.recruitment_ops import (
+    generate_requisition_agency_brief,
+    get_interview_follow_up_action,
+    get_offer_next_action,
+)
 
 REQUISITION_BRIEF_FIELDS = (
     "designation",
@@ -49,6 +54,47 @@ def auto_screen_job_applicant_on_update(doc, method=None) -> None:
     _auto_screen_job_applicant(doc, force=False)
 
 
+def sync_interview_ops(doc, method=None) -> None:
+    if not getattr(doc, "job_applicant", None):
+        return
+
+    if not getattr(doc, "aihr_follow_up_owner", None):
+        doc.aihr_follow_up_owner = _default_owner(doc)
+    if not getattr(doc, "aihr_feedback_due_at", None) and getattr(doc, "scheduled_on", None):
+        doc.aihr_feedback_due_at = get_datetime(f"{add_to_date(doc.scheduled_on, days=1)} 12:00:00")
+
+    applicant = frappe.get_doc("Job Applicant", doc.job_applicant)
+    applicant.aihr_ai_status = "Rejected" if doc.status == "Rejected" else "Interview"
+    applicant.aihr_next_action = get_interview_follow_up_action(
+        doc.status,
+        format_datetime(doc.aihr_feedback_due_at) if getattr(doc, "aihr_feedback_due_at", None) else "",
+    )
+    applicant.aihr_next_action_at = getattr(doc, "aihr_feedback_due_at", None) or None
+    applicant.aihr_last_contact_at = now_datetime()
+    applicant.save(ignore_permissions=True)
+
+
+def sync_job_offer_ops(doc, method=None) -> None:
+    if not getattr(doc, "job_applicant", None):
+        return
+
+    if not getattr(doc, "aihr_onboarding_owner", None):
+        doc.aihr_onboarding_owner = _default_owner(doc)
+    if not getattr(doc, "aihr_payroll_handoff_status", None):
+        doc.aihr_payroll_handoff_status = "Not Started"
+
+    applicant = frappe.get_doc("Job Applicant", doc.job_applicant)
+    if doc.status == "Accepted":
+        applicant.aihr_ai_status = "Hired"
+    elif doc.status == "Rejected":
+        applicant.aihr_ai_status = "Rejected"
+    else:
+        applicant.aihr_ai_status = "Offer"
+    applicant.aihr_next_action = get_offer_next_action(doc.status, doc.aihr_payroll_handoff_status)
+    applicant.aihr_last_contact_at = now_datetime()
+    applicant.save(ignore_permissions=True)
+
+
 def _auto_screen_job_applicant(doc, force: bool) -> None:
     if getattr(frappe.flags, "in_aihr_screening", False):
         return
@@ -73,3 +119,10 @@ def _auto_screen_job_applicant(doc, force: bool) -> None:
         )
     finally:
         frappe.flags.in_aihr_screening = False
+
+
+def _default_owner(doc) -> str:
+    session_user = getattr(frappe.session, "user", None)
+    if session_user and session_user != "Guest":
+        return session_user
+    return getattr(doc, "owner", None) or "Administrator"

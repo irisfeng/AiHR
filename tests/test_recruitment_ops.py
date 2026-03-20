@@ -2,7 +2,11 @@ import unittest
 
 from aihr.services.recruitment_ops import (
     build_requisition_payload,
+    build_interviewer_pack,
+    build_offer_handoff_notes,
     generate_requisition_agency_brief,
+    get_interview_follow_up_action,
+    get_offer_next_action,
     get_screening_next_action,
 )
 
@@ -52,6 +56,50 @@ class RecruitmentOpsTests(unittest.TestCase):
         self.assertEqual(get_screening_next_action("Advance"), "安排经理初筛")
         self.assertEqual(get_screening_next_action("Ready for Review"), "经理复核候选人摘要")
         self.assertEqual(get_screening_next_action("Hold"), "补充信息或暂缓推进")
+
+    def test_builds_interviewer_pack(self):
+        pack = build_interviewer_pack(
+            candidate_name="张敏",
+            opening_title="HRBP - AIHR MVP Demo",
+            interview_round="AIHR 首轮面试",
+            interview_mode="视频",
+            schedule_label="2026-03-21 14:00 - 15:00",
+            ai_summary="AI 启发式匹配分 86，候选人具备招聘和薪酬经验。",
+            strengths=["招聘协同经验完整", "对入职与薪酬交接敏感"],
+            risks=["尚未确认到岗时间"],
+            suggested_questions=["请分享你推进 Offer 到入职的典型案例"],
+        )
+
+        self.assertIn("AIHR 面试官资料包", pack)
+        self.assertIn("张敏", pack)
+        self.assertIn("招聘协同经验完整", pack)
+        self.assertIn("请分享你推进 Offer 到入职的典型案例", pack)
+
+    def test_maps_interview_follow_up_action(self):
+        action = get_interview_follow_up_action("Under Review", "2026-03-22 12:00:00")
+
+        self.assertIn("催收面试反馈", action)
+        self.assertIn("2026-03-22", action)
+
+    def test_builds_offer_handoff_notes(self):
+        notes = build_offer_handoff_notes(
+            candidate_name="Mia Zhang",
+            opening_title="HRBP - AIHR MVP Demo",
+            offer_status="Accepted",
+            onboarding_owner="manager.demo@aihr.local",
+            payroll_handoff_status="Ready",
+            salary_expectation="CNY 28000 - 32000",
+            compensation_notes="建议确认试用期薪资和补贴项。",
+        )
+
+        self.assertIn("AIHR Offer 交接摘要", notes)
+        self.assertIn("Mia Zhang", notes)
+        self.assertIn("建议确认试用期薪资和补贴项。", notes)
+        self.assertIn("发起入职任务", notes)
+
+    def test_maps_offer_next_action(self):
+        self.assertEqual(get_offer_next_action("Awaiting Response", "Not Started"), "跟进候选人反馈并确认到岗时间")
+        self.assertEqual(get_offer_next_action("Accepted", "Ready"), "发起入职任务并通知薪资建档负责人")
 
 
 if __name__ == "__main__":

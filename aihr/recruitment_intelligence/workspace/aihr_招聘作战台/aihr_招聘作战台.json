@@ -1,0 +1,237 @@
+{
+ "charts": [],
+ "content": "[{\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"AIHR \u62db\u8058\u4f5c\u6218\u53f0\", \"col\": 12}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u9ad8\u9891\u64cd\u4f5c</b></span><div class=\\\"text-muted\\\">\u56f4\u7ed5\u62db\u8058\u4e3b\u94fe\u8def\u63a8\u8fdb\uff0c\u800c\u4e0d\u662f\u5728 ERP \u6a21\u5757\u91cc\u5bfb\u627e\u5165\u53e3\u3002</div>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u65b0\u5efa\u5c97\u4f4d\u9700\u6c42\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u62db\u8058\u4e2d\u5c97\u4f4d\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5019\u9009\u4eba\u6c60\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"AI \u6458\u8981\u6c60\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u9762\u8bd5\u5b89\u6392\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Offer \u7ba1\u7406\", \"col\": 2}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u529f\u80fd\u6a21\u5757</b></span><div class=\\\"text-muted\\\">\u4ece\u9700\u6c42\u3001\u7b5b\u9009\u3001\u9762\u8bd5\u5230\u5f55\u7528\uff0c\u5168\u90e8\u56f4\u7ed5 AIHR \u62db\u8058\u4f5c\u6218\u53f0\u7ec4\u7ec7\u3002</div>\", \"col\": 12}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u62db\u8058\u6267\u884c\", \"col\": 4}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u9762\u8bd5\u4e0e\u5f55\u7528\", \"col\": 4}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u7ec4\u7ec7\u4e0e\u4e3b\u6570\u636e\", \"col\": 4}}]",
+ "creation": "2026-03-20 22:50:56.072294",
+ "custom_blocks": [
+  {
+   "custom_block_name": "AIHR Hiring HQ Block",
+   "label": "AIHR \u62db\u8058\u4f5c\u6218\u53f0"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 1,
+ "icon": "branch",
+ "idx": 0,
+ "indicator_color": "blue",
+ "is_hidden": 0,
+ "label": "AIHR \u62db\u8058\u4f5c\u6218\u53f0",
+ "links": [
+  {
+   "description": "\u4ece\u5c97\u4f4d\u9700\u6c42\u3001\u5c97\u4f4d\u5f00\u542f\u5230\u5019\u9009\u4eba AI \u521d\u7b5b\u7684\u4e3b\u94fe\u8def\u3002",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u62db\u8058\u6267\u884c",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5c97\u4f4d\u9700\u6c42\u5355",
+   "link_count": 0,
+   "link_to": "Job Requisition",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u62db\u8058\u4e2d\u5c97\u4f4d",
+   "link_count": 0,
+   "link_to": "Job Opening",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5019\u9009\u4eba\u6863\u6848",
+   "link_count": 0,
+   "link_to": "Job Applicant",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AI \u521d\u7b5b\u7ed3\u679c",
+   "link_count": 0,
+   "link_to": "AI Screening",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "description": "\u9762\u8bd5\u5b89\u6392\u3001\u53cd\u9988\u56de\u6536\u548c Offer \u63a8\u8fdb\u3002",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u9762\u8bd5\u4e0e\u5f55\u7528",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u9762\u8bd5\u5b89\u6392",
+   "link_count": 0,
+   "link_to": "Interview",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u9762\u8bd5\u53cd\u9988",
+   "link_count": 0,
+   "link_to": "Interview Feedback",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Offer \u7ba1\u7406",
+   "link_count": 0,
+   "link_to": "Job Offer",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5f55\u7528\u4fe1",
+   "link_count": 0,
+   "link_to": "Appointment Letter",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "description": "\u7528\u4e8e\u7ef4\u62a4\u62db\u8058\u534f\u540c\u6240\u9700\u7684\u7ec4\u7ec7\u3001\u5165\u804c\u548c\u57fa\u7840\u4e3b\u6570\u636e\u3002",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u7ec4\u7ec7\u4e0e\u4e3b\u6570\u636e",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5165\u804c\u4ea4\u63a5",
+   "link_count": 0,
+   "link_to": "Employee Onboarding",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5458\u5de5\u6863\u6848",
+   "link_count": 0,
+   "link_to": "Employee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u90e8\u95e8",
+   "link_count": 0,
+   "link_to": "Department",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u7528\u6237",
+   "link_count": 0,
+   "link_to": "User",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-03-21 07:19:22.181070",
+ "modified_by": "Administrator",
+ "module": "Recruitment Intelligence",
+ "name": "AIHR \u62db\u8058\u4f5c\u6218\u53f0",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 0.0,
+ "shortcuts": [
+  {
+   "color": "#0f766e",
+   "doc_view": "New",
+   "label": "\u65b0\u5efa\u5c97\u4f4d\u9700\u6c42",
+   "link_to": "Job Requisition",
+   "type": "DocType"
+  },
+  {
+   "color": "#ea580c",
+   "doc_view": "List",
+   "format": "{} \u62db\u8058\u4e2d",
+   "label": "\u62db\u8058\u4e2d\u5c97\u4f4d",
+   "link_to": "Job Opening",
+   "stats_filter": "{\"status\": [\"=\", \"Open\"]}",
+   "type": "DocType"
+  },
+  {
+   "color": "#2563eb",
+   "doc_view": "List",
+   "format": "{} \u5019\u9009\u4eba",
+   "label": "\u5019\u9009\u4eba\u6c60",
+   "link_to": "Job Applicant",
+   "stats_filter": "{\"status\": [\"!=\", \"Rejected\"]}",
+   "type": "DocType"
+  },
+  {
+   "color": "#7c3aed",
+   "doc_view": "List",
+   "format": "{} \u6761\u6458\u8981",
+   "label": "AI \u6458\u8981\u6c60",
+   "link_to": "AI Screening",
+   "stats_filter": "{\"docstatus\": [\"!=\", \"2\"]}",
+   "type": "DocType"
+  },
+  {
+   "color": "#ca8a04",
+   "doc_view": "List",
+   "format": "{} \u6761\u8bb0\u5f55",
+   "label": "\u9762\u8bd5\u5b89\u6392",
+   "link_to": "Interview",
+   "stats_filter": "{\"docstatus\": [\"!=\", \"2\"]}",
+   "type": "DocType"
+  },
+  {
+   "color": "#be123c",
+   "doc_view": "List",
+   "format": "{} \u6761 Offer",
+   "label": "Offer \u7ba1\u7406",
+   "link_to": "Job Offer",
+   "stats_filter": "{\"docstatus\": [\"!=\", \"2\"]}",
+   "type": "DocType"
+  }
+ ],
+ "title": "AIHR \u62db\u8058\u4f5c\u6218\u53f0"
+}

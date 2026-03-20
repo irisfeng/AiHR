@@ -5,7 +5,11 @@ from pathlib import Path
 from typing import Any
 
 from aihr.services.recruitment_ops import (
+    build_interviewer_pack,
+    build_offer_handoff_notes,
     generate_requisition_agency_brief,
+    get_interview_follow_up_action,
+    get_offer_next_action,
     get_screening_next_action,
 )
 from aihr.services.resume_parser import extract_text_from_file, parse_resume_text
@@ -431,6 +435,250 @@ def get_job_opening_pipeline_summary(job_opening: str) -> dict[str, Any]:
 
 
 @whitelist()
+def get_interview_snapshot(interview: str) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for fetching Interview snapshots.")
+
+    interview_doc = frappe.get_doc("Interview", interview)
+    applicant = frappe.get_doc("Job Applicant", interview_doc.job_applicant) if getattr(interview_doc, "job_applicant", None) else None
+    opening = _get_job_opening_doc(getattr(interview_doc, "job_opening", None) or getattr(applicant, "job_title", None))
+    screening = _get_latest_screening_doc(applicant.name if applicant else None)
+
+    feedback_due_label = _format_datetime_label(getattr(interview_doc, "aihr_feedback_due_at", None))
+    schedule_label = _build_interview_schedule_label(interview_doc)
+    next_action = get_interview_follow_up_action(interview_doc.status, feedback_due_label)
+
+    return {
+        "interview": {
+            "name": interview_doc.name,
+            "status": interview_doc.status,
+            "interview_round": interview_doc.interview_round,
+            "interview_mode": getattr(interview_doc, "aihr_interview_mode", ""),
+            "scheduled_on": interview_doc.scheduled_on,
+            "from_time": interview_doc.from_time,
+            "to_time": interview_doc.to_time,
+            "schedule_label": schedule_label,
+            "follow_up_owner": getattr(interview_doc, "aihr_follow_up_owner", ""),
+            "feedback_due_at": getattr(interview_doc, "aihr_feedback_due_at", ""),
+            "feedback_due_label": feedback_due_label,
+            "interviewer_pack": getattr(interview_doc, "aihr_interviewer_pack", ""),
+            "interview_summary": interview_doc.interview_summary,
+            "interviewers": [row.interviewer for row in getattr(interview_doc, "interview_details", []) if getattr(row, "interviewer", None)],
+        },
+        "job_applicant": {
+            "name": applicant.name,
+            "applicant_name": applicant.applicant_name,
+            "email_id": applicant.email_id,
+            "phone_number": applicant.phone_number,
+            "aihr_ai_status": getattr(applicant, "aihr_ai_status", ""),
+            "aihr_next_action": getattr(applicant, "aihr_next_action", ""),
+            "aihr_match_score": getattr(applicant, "aihr_match_score", 0),
+        }
+        if applicant
+        else None,
+        "job_opening": {
+            "name": opening.name,
+            "job_title": opening.job_title,
+            "company": opening.company,
+        }
+        if opening
+        else None,
+        "screening": {
+            "status": screening.status,
+            "overall_score": screening.overall_score,
+            "ai_summary": screening.ai_summary,
+            "strengths": _lines_to_list(screening.strengths),
+            "risks": _lines_to_list(screening.risks),
+            "suggested_questions": _lines_to_list(screening.suggested_questions),
+        }
+        if screening
+        else None,
+        "actions": {
+            "next_action": next_action,
+            "candidate_route": frappe.utils.get_url_to_form("Job Applicant", applicant.name) if applicant else "",
+            "opening_route": frappe.utils.get_url_to_form("Job Opening", opening.name) if opening else "",
+        },
+    }
+
+
+@whitelist()
+def prepare_interviewer_pack(interview: str, save: int = 1) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for preparing Interview records.")
+
+    interview_doc = frappe.get_doc("Interview", interview)
+    applicant = frappe.get_doc("Job Applicant", interview_doc.job_applicant) if getattr(interview_doc, "job_applicant", None) else None
+    opening = _get_job_opening_doc(getattr(interview_doc, "job_opening", None) or getattr(applicant, "job_title", None))
+    screening = _get_latest_screening_doc(applicant.name if applicant else None)
+
+    feedback_due_at = getattr(interview_doc, "aihr_feedback_due_at", None) or _default_feedback_due_at(interview_doc.scheduled_on)
+    if not getattr(interview_doc, "aihr_follow_up_owner", None):
+        interview_doc.aihr_follow_up_owner = _default_owner()
+    interview_doc.aihr_feedback_due_at = feedback_due_at
+    pack = _build_interviewer_pack_for_context(interview_doc, applicant, opening, screening)
+
+    if save:
+        interview_doc.aihr_interviewer_pack = pack
+        interview_doc.save(ignore_permissions=True)
+
+    return {
+        "interview": interview_doc.name,
+        "interviewer_pack": pack,
+        "feedback_due_at": feedback_due_at,
+        "follow_up_owner": interview_doc.aihr_follow_up_owner,
+    }
+
+
+@whitelist()
+def sync_interview_follow_up(interview: str, save: int = 1) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for syncing Interview follow-up.")
+
+    interview_doc = frappe.get_doc("Interview", interview)
+    applicant = frappe.get_doc("Job Applicant", interview_doc.job_applicant) if getattr(interview_doc, "job_applicant", None) else None
+
+    if not getattr(interview_doc, "aihr_follow_up_owner", None):
+        interview_doc.aihr_follow_up_owner = _default_owner()
+    if not getattr(interview_doc, "aihr_feedback_due_at", None):
+        interview_doc.aihr_feedback_due_at = _default_feedback_due_at(interview_doc.scheduled_on)
+
+    next_action = get_interview_follow_up_action(
+        interview_doc.status,
+        _format_datetime_label(getattr(interview_doc, "aihr_feedback_due_at", None)),
+    )
+
+    if save:
+        if not getattr(interview_doc, "aihr_interviewer_pack", None):
+            opening = _get_job_opening_doc(getattr(interview_doc, "job_opening", None) or getattr(applicant, "job_title", None))
+            screening = _get_latest_screening_doc(applicant.name if applicant else None)
+            interview_doc.aihr_interviewer_pack = _build_interviewer_pack_for_context(interview_doc, applicant, opening, screening)
+        interview_doc.save(ignore_permissions=True)
+
+    return {
+        "interview": interview_doc.name,
+        "next_action": next_action,
+        "follow_up_owner": getattr(interview_doc, "aihr_follow_up_owner", ""),
+        "feedback_due_at": getattr(interview_doc, "aihr_feedback_due_at", ""),
+    }
+
+
+@whitelist()
+def get_job_offer_snapshot(job_offer: str) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for fetching Job Offer snapshots.")
+
+    offer = frappe.get_doc("Job Offer", job_offer)
+    applicant = frappe.get_doc("Job Applicant", offer.job_applicant) if getattr(offer, "job_applicant", None) else None
+    opening = _get_job_opening_doc(getattr(applicant, "job_title", None))
+    screening = _get_latest_screening_doc(applicant.name if applicant else None)
+
+    payroll_status = getattr(offer, "aihr_payroll_handoff_status", "") or "Not Started"
+    next_action = get_offer_next_action(offer.status, payroll_status)
+    salary_expectation = _format_salary_expectation(applicant)
+    handoff_summary = build_offer_handoff_notes(
+        candidate_name=getattr(applicant, "applicant_name", "") if applicant else "",
+        opening_title=getattr(opening, "job_title", "") if opening else "",
+        offer_status=offer.status,
+        onboarding_owner=getattr(offer, "aihr_onboarding_owner", ""),
+        payroll_handoff_status=payroll_status,
+        salary_expectation=salary_expectation,
+        compensation_notes=getattr(offer, "aihr_compensation_notes", ""),
+    )
+
+    return {
+        "job_offer": {
+            "name": offer.name,
+            "status": offer.status,
+            "offer_date": offer.offer_date,
+            "designation": offer.designation,
+            "company": offer.company,
+            "onboarding_owner": getattr(offer, "aihr_onboarding_owner", ""),
+            "payroll_handoff_status": payroll_status,
+            "compensation_notes": getattr(offer, "aihr_compensation_notes", ""),
+            "terms_preview": _truncate_text(_strip_html(offer.terms or ""), 180),
+        },
+        "job_applicant": {
+            "name": applicant.name,
+            "applicant_name": applicant.applicant_name,
+            "email_id": applicant.email_id,
+            "phone_number": applicant.phone_number,
+            "salary_expectation": salary_expectation,
+            "aihr_match_score": getattr(applicant, "aihr_match_score", 0),
+        }
+        if applicant
+        else None,
+        "job_opening": {
+            "name": opening.name,
+            "job_title": opening.job_title,
+        }
+        if opening
+        else None,
+        "screening": {
+            "status": screening.status,
+            "ai_summary": screening.ai_summary,
+            "strengths": _lines_to_list(screening.strengths),
+            "risks": _lines_to_list(screening.risks),
+        }
+        if screening
+        else None,
+        "actions": {
+            "next_action": next_action,
+            "handoff_summary": handoff_summary,
+            "candidate_route": frappe.utils.get_url_to_form("Job Applicant", applicant.name) if applicant else "",
+        },
+    }
+
+
+@whitelist()
+def prepare_job_offer_handoff(job_offer: str, save: int = 1) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for preparing Job Offer handoff.")
+
+    offer = frappe.get_doc("Job Offer", job_offer)
+    applicant = frappe.get_doc("Job Applicant", offer.job_applicant) if getattr(offer, "job_applicant", None) else None
+    opening = _get_job_opening_doc(getattr(applicant, "job_title", None))
+
+    if not getattr(offer, "aihr_onboarding_owner", None):
+        offer.aihr_onboarding_owner = _default_owner()
+    if not getattr(offer, "aihr_payroll_handoff_status", None):
+        offer.aihr_payroll_handoff_status = "Not Started"
+    if not getattr(offer, "aihr_compensation_notes", None):
+        offer.aihr_compensation_notes = _build_compensation_notes(applicant, opening)
+
+    if save:
+        offer.save(ignore_permissions=True)
+
+    return {
+        "job_offer": offer.name,
+        "onboarding_owner": getattr(offer, "aihr_onboarding_owner", ""),
+        "payroll_handoff_status": getattr(offer, "aihr_payroll_handoff_status", ""),
+        "compensation_notes": getattr(offer, "aihr_compensation_notes", ""),
+    }
+
+
+@whitelist()
+def mark_job_offer_payroll_ready(job_offer: str, save: int = 1) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for updating Job Offer payroll handoff.")
+
+    offer = frappe.get_doc("Job Offer", job_offer)
+    applicant = frappe.get_doc("Job Applicant", offer.job_applicant) if getattr(offer, "job_applicant", None) else None
+
+    offer.aihr_payroll_handoff_status = "Ready"
+    if not getattr(offer, "aihr_onboarding_owner", None):
+        offer.aihr_onboarding_owner = _default_owner()
+
+    if save:
+        offer.save(ignore_permissions=True)
+
+    return {
+        "job_offer": offer.name,
+        "payroll_handoff_status": offer.aihr_payroll_handoff_status,
+        "next_action": get_offer_next_action(offer.status, offer.aihr_payroll_handoff_status),
+    }
+
+
+@whitelist()
 def sync_job_requisition_agency_brief(job_requisition: str, save: int = 1) -> dict[str, Any]:
     if not frappe:
         raise RuntimeError("Frappe is required for syncing Job Requisition records.")
@@ -522,6 +770,136 @@ def screen_job_opening_applicants(job_opening: str, save: int = 1) -> dict[str, 
         "screened_count": len(screened),
         "job_applicants": [item["job_applicant"] for item in screened],
     }
+
+
+def _build_interviewer_pack_for_context(interview_doc, applicant, opening, screening) -> str:
+    return build_interviewer_pack(
+        candidate_name=getattr(applicant, "applicant_name", "") if applicant else "",
+        opening_title=getattr(opening, "job_title", "") if opening else "",
+        interview_round=getattr(interview_doc, "interview_round", ""),
+        interview_mode=_interview_mode_label(getattr(interview_doc, "aihr_interview_mode", "")),
+        schedule_label=_build_interview_schedule_label(interview_doc),
+        ai_summary=getattr(screening, "ai_summary", "") if screening else "",
+        strengths=_lines_to_list(getattr(screening, "strengths", "")) if screening else [],
+        risks=_lines_to_list(getattr(screening, "risks", "")) if screening else [],
+        suggested_questions=_lines_to_list(getattr(screening, "suggested_questions", "")) if screening else [],
+    )
+
+
+def _get_latest_screening_doc(job_applicant: str | None):
+    if not job_applicant:
+        return None
+
+    screening_names = frappe.get_all(
+        "AI Screening",
+        filters={"job_applicant": job_applicant},
+        pluck="name",
+        order_by="modified desc",
+        limit_page_length=1,
+    )
+    return frappe.get_doc("AI Screening", screening_names[0]) if screening_names else None
+
+
+def _get_job_opening_doc(job_opening: str | None):
+    if not job_opening:
+        return None
+    if not frappe.db.exists("Job Opening", job_opening):
+        return None
+    return frappe.get_doc("Job Opening", job_opening)
+
+
+def _default_owner() -> str:
+    session_user = getattr(frappe.session, "user", None)
+    if session_user and session_user != "Guest":
+        return session_user
+    return "Administrator"
+
+
+def _default_feedback_due_at(scheduled_on) -> str:
+    from frappe.utils import add_to_date, get_datetime
+
+    if not scheduled_on:
+        return ""
+    due_date = add_to_date(scheduled_on, days=1)
+    return get_datetime(f"{due_date} 12:00:00")
+
+
+def _build_interview_schedule_label(interview_doc) -> str:
+    from frappe.utils import format_date, format_time
+
+    parts = []
+    if getattr(interview_doc, "scheduled_on", None):
+        parts.append(format_date(interview_doc.scheduled_on))
+    time_bits = []
+    if getattr(interview_doc, "from_time", None):
+        time_bits.append(format_time(interview_doc.from_time))
+    if getattr(interview_doc, "to_time", None):
+        time_bits.append(format_time(interview_doc.to_time))
+    if time_bits:
+        parts.append(" - ".join(time_bits))
+    return " ".join(parts).strip()
+
+
+def _format_datetime_label(value) -> str:
+    from frappe.utils import format_datetime
+
+    if not value:
+        return ""
+    return format_datetime(value)
+
+
+def _format_salary_expectation(applicant) -> str:
+    if not applicant:
+        return "待补充"
+    currency = getattr(applicant, "currency", "") or ""
+    lower = getattr(applicant, "lower_range", None)
+    upper = getattr(applicant, "upper_range", None)
+    if not lower and not upper:
+        return "待补充"
+    lower_text = _format_amount(lower) if lower else "--"
+    if upper:
+        return f"{currency} {lower_text} - {_format_amount(upper)}".strip()
+    return f"{currency} {lower_text}".strip()
+
+
+def _build_compensation_notes(applicant, opening) -> str:
+    expectation = _format_salary_expectation(applicant)
+    opening_range = _format_opening_salary_range(opening)
+    candidate_name = getattr(applicant, "applicant_name", "候选人") if applicant else "候选人"
+    return (
+        f"{candidate_name} 当前期望 {expectation}；岗位预算 {opening_range}。"
+        " 建议确认 base、试用期薪资、到岗时间和补贴项后，再推进入职与薪酬建档。"
+    )
+
+
+def _format_opening_salary_range(opening) -> str:
+    if not opening:
+        return "待补充"
+    currency = getattr(opening, "currency", "") or ""
+    lower = getattr(opening, "lower_range", None)
+    upper = getattr(opening, "upper_range", None)
+    if not lower and not upper:
+        return "待补充"
+    lower_text = _format_amount(lower) if lower else "--"
+    if upper:
+        return f"{currency} {lower_text} - {_format_amount(upper)}".strip()
+    return f"{currency} {lower_text}".strip()
+
+
+def _interview_mode_label(value: str | None) -> str:
+    labels = {
+        "Phone": "电话",
+        "Video": "视频",
+        "Onsite": "现场",
+    }
+    return labels.get(value or "", value or "待确认")
+
+
+def _format_amount(value: Any) -> str:
+    numeric = float(value)
+    if numeric.is_integer():
+        return str(int(numeric))
+    return f"{numeric:.2f}"
 
 
 def _get_job_requirements(applicant) -> str:
@@ -669,3 +1047,10 @@ def _truncate_text(value: str, limit: int) -> str:
     if len(value) <= limit:
         return value
     return f"{value[:limit]}..."
+
+
+def _strip_html(value: str) -> str:
+    import re
+
+    plain = re.sub(r"<[^>]+>", " ", value or "")
+    return " ".join(plain.split())

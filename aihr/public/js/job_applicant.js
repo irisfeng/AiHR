@@ -20,6 +20,29 @@ function addApplicantActions(frm) {
     await frm.reload_doc();
     frappe.show_alert({ message: "AI 初筛已更新", indicator: "green" });
   });
+
+  if (frm.doc.job_title) {
+    frm.add_custom_button("安排面试", () => {
+      frappe.new_doc("Interview", {
+        job_applicant: frm.doc.name,
+        job_opening: frm.doc.job_title,
+        scheduled_on: frappe.datetime.get_today(),
+      });
+    });
+
+    frm.add_custom_button("生成 Offer", async () => {
+      const defaults = {
+        job_applicant: frm.doc.name,
+        offer_date: frappe.datetime.get_today(),
+        designation: frm.doc.designation,
+      };
+      const response = await frappe.db.get_value("Job Opening", frm.doc.job_title, ["company", "designation"]);
+      const opening = response.message || {};
+      defaults.company = opening.company;
+      defaults.designation = opening.designation || defaults.designation;
+      frappe.new_doc("Job Offer", defaults);
+    });
+  }
 }
 
 async function renderApplicantSnapshot(frm) {

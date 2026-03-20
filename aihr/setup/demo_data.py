@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 import frappe
-from frappe.utils import now_datetime
+from frappe.utils import add_to_date, get_datetime, now_datetime
 
+from aihr.services.recruitment_ops import build_interviewer_pack
 from aihr.services.resume_parser import parse_resume_text
 from aihr.services.screening import build_agency_brief, screen_candidate
 
@@ -28,17 +29,23 @@ def seed_demo_recruitment_data(company: str) -> dict[str, str]:
         requisition=requisition.name,
     )
 
-    applicants = []
+    applicant_docs = []
     for sample in _candidate_samples():
         applicant = _get_or_create_job_applicant(job_opening.name, sample)
         _screen_applicant(applicant, requisition, job_opening)
-        applicants.append(applicant.name)
+        applicant_docs.append(applicant)
+
+    interview_round = _ensure_interview_round(designation.name)
+    interview = _get_or_create_interview(job_opening, applicant_docs[0], interview_round, requester.user_id)
+    job_offer = _get_or_create_job_offer(company_doc.name, designation.name, applicant_docs[-1], job_opening, requester.user_id)
 
     return {
         "company": company_doc.name,
         "job_requisition": requisition.name,
         "job_opening": job_opening.name,
-        "job_applicants": ", ".join(applicants),
+        "job_applicants": ", ".join(applicant.name for applicant in applicant_docs),
+        "interview": interview.name,
+        "job_offer": job_offer.name,
     }
 
 
@@ -271,6 +278,100 @@ def _screen_applicant(applicant, requisition, job_opening) -> None:
     doc.parsed_resume_json = frappe.as_json(parsed_resume, indent=2)
     doc.screening_payload_json = frappe.as_json(screening, indent=2)
     doc.save(ignore_permissions=True)
+
+
+def _ensure_interview_round(designation: str):
+    round_name = "AIHR 首轮面试"
+    existing = frappe.db.exists("Interview Round", round_name)
+    if existing:
+        return frappe.get_doc("Interview Round", existing)
+
+    for skill_name, description in (
+        ("招聘协同", "能够独立推进招聘全链路协同"),
+        ("入职推进", "能承接 Offer 到入职交接的动作"),
+        ("业务沟通", "能与部门经理和候选人高效协作"),
+    ):
+        _ensure_skill(skill_name, description)
+
+    doc = frappe.new_doc("Interview Round")
+    doc.round_name = round_name
+    doc.designation = designation
+    doc.expected_average_rating = 4
+    for skill_name in ("招聘协同", "入职推进", "业务沟通"):
+        doc.append("expected_skill_set", {"skill": skill_name})
+    doc.save(ignore_permissions=True)
+    return doc
+
+
+def _ensure_skill(skill_name: str, description: str):
+    existing = frappe.db.exists("Skill", skill_name)
+    if existing:
+        return frappe.get_doc("Skill", existing)
+
+    doc = frappe.new_doc("Skill")
+    doc.skill_name = skill_name
+    doc.description = description
+    doc.save(ignore_permissions=True)
+    return doc
+
+
+def _get_or_create_interview(job_opening, applicant, interview_round, follow_up_owner: str):
+    existing = frappe.db.exists("Interview", {"job_applicant": applicant.name, "interview_round": interview_round.name})
+    if existing:
+        return frappe.get_doc("Interview", existing)
+
+    screening_name = frappe.db.get_value("AI Screening", {"job_applicant": applicant.name}, "name")
+    screening = frappe.get_doc("AI Screening", screening_name) if screening_name else None
+
+    doc = frappe.new_doc("Interview")
+    doc.job_applicant = applicant.name
+    doc.interview_round = interview_round.name
+    doc.scheduled_on = add_to_date(now_datetime().date(), days=1)
+    doc.from_time = "14:00:00"
+    doc.to_time = "15:00:00"
+    doc.status = "Under Review"
+    doc.aihr_interview_mode = "Video"
+    doc.aihr_follow_up_owner = follow_up_owner
+    doc.aihr_feedback_due_at = get_datetime(f"{add_to_date(doc.scheduled_on, days=1)} 12:00:00")
+    doc.append("interview_details", {"interviewer": follow_up_owner})
+    doc.aihr_interviewer_pack = build_interviewer_pack(
+        candidate_name=applicant.applicant_name,
+        opening_title=job_opening.job_title,
+        interview_round=interview_round.name,
+        interview_mode="视频",
+        schedule_label=f"{doc.scheduled_on} 14:00 - 15:00",
+        ai_summary=screening.ai_summary if screening else "",
+        strengths=(screening.strengths or "").splitlines() if screening else [],
+        risks=(screening.risks or "").splitlines() if screening else [],
+        suggested_questions=(screening.suggested_questions or "").splitlines() if screening else [],
+    )
+    doc.save(ignore_permissions=True)
+    return doc
+
+
+def _get_or_create_job_offer(company: str, designation: str, applicant, job_opening, onboarding_owner: str):
+    existing = frappe.db.exists("Job Offer", {"job_applicant": applicant.name})
+    if existing:
+        return frappe.get_doc("Job Offer", existing)
+
+    doc = frappe.new_doc("Job Offer")
+    doc.job_applicant = applicant.name
+    doc.offer_date = now_datetime().date()
+    doc.designation = designation
+    doc.company = company
+    doc.status = "Awaiting Response"
+    doc.terms = (
+        "<p>预计到岗时间 2 周内，试用期 3 个月，薪资结构以正式 Offer 为准。</p>"
+        "<p>请同步确认身份证明、学历材料、入职日期和薪酬建档负责人。</p>"
+    )
+    doc.aihr_onboarding_owner = onboarding_owner
+    doc.aihr_payroll_handoff_status = "Ready"
+    doc.aihr_compensation_notes = (
+        f"{applicant.applicant_name} 当前岗位匹配度较高，建议按 {job_opening.currency} "
+        f"{int(job_opening.lower_range)} - {int(job_opening.upper_range)} 范围沟通最终薪酬。"
+    )
+    doc.save(ignore_permissions=True)
+    return doc
 
 
 def _candidate_samples() -> list[dict[str, str]]:

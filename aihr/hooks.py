@@ -30,4 +30,10 @@ doc_events = {
         "after_insert": "aihr.events.recruitment.auto_screen_job_applicant_after_insert",
         "on_update": "aihr.events.recruitment.auto_screen_job_applicant_on_update",
     },
+    "Interview": {
+        "validate": "aihr.events.recruitment.sync_interview_ops",
+    },
+    "Job Offer": {
+        "validate": "aihr.events.recruitment.sync_job_offer_ops",
+    },
 }

@@ -43,4 +43,14 @@ CLIENT_SCRIPTS = [
         "dt": "Job Opening",
         "script_path": "public/js/job_opening.js",
     },
+    {
+        "name": "AIHR Interview Form",
+        "dt": "Interview",
+        "script_path": "public/js/interview.js",
+    },
+    {
+        "name": "AIHR Job Offer Form",
+        "dt": "Job Offer",
+        "script_path": "public/js/job_offer.js",
+    },
 ]

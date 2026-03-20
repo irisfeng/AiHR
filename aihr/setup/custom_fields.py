@@ -213,11 +213,17 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
                 "insert_after": "interview_summary",
             },
             {
+                "fieldname": "aihr_interview_snapshot_html",
+                "fieldtype": "HTML",
+                "label": "Interview Snapshot",
+                "insert_after": "aihr_interview_ops_section",
+            },
+            {
                 "fieldname": "aihr_interview_mode",
                 "fieldtype": "Select",
                 "label": "Interview Mode",
                 "options": "Phone\nVideo\nOnsite",
-                "insert_after": "aihr_interview_ops_section",
+                "insert_after": "aihr_interview_snapshot_html",
             },
             {
                 "fieldname": "aihr_follow_up_owner",
@@ -247,11 +253,17 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
                 "insert_after": "terms",
             },
             {
+                "fieldname": "aihr_offer_snapshot_html",
+                "fieldtype": "HTML",
+                "label": "Offer Snapshot",
+                "insert_after": "aihr_offer_ops_section",
+            },
+            {
                 "fieldname": "aihr_onboarding_owner",
                 "fieldtype": "Link",
                 "label": "Onboarding Owner",
                 "options": "User",
-                "insert_after": "aihr_offer_ops_section",
+                "insert_after": "aihr_offer_snapshot_html",
             },
             {
                 "fieldname": "aihr_payroll_handoff_status",
