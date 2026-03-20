@@ -11,9 +11,13 @@ SITE_NAME="${SITE_NAME:-development.localhost}"
 
 docker exec "$CONTAINER_NAME" bash -lc "
   mkdir -p '$LOG_DIR' '$BENCH_DIR/logs' &&
-  pkill -f 'bench serve --port $PORT' >/dev/null 2>&1 || true &&
+  pids=\$(ps -eo pid,args | awk '/frappe.utils.bench_helper frappe serve --port $PORT/ && !/awk/ {print \$1}') &&
+  if [ -n \"\$pids\" ]; then kill \$pids >/dev/null 2>&1 || true; fi
+"
+
+docker exec -d "$CONTAINER_NAME" bash -lc "
   cd '$BENCH_DIR' &&
-  nohup bench serve --port '$PORT' --noreload > '$LOG_DIR/bench-serve.log' 2>&1 &
+  exec bench serve --port '$PORT' --noreload > '$LOG_DIR/bench-serve.log' 2>&1
 "
 
 cat <<EOF

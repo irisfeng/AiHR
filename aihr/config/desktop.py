@@ -5,10 +5,9 @@ def get_data():
     return [
         {
             "module_name": "Recruitment Intelligence",
-            "label": _("AIHR"),
+            "label": _("AIHR 招聘"),
             "color": "blue",
             "icon": "octicon octicon-people",
             "type": "module",
         }
     ]
-

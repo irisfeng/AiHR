@@ -5,14 +5,14 @@ app_description = "AI-first recruitment workflow extension for Frappe HR"
 app_email = "platform@example.com"
 app_license = "GPL-3.0-or-later"
 required_apps = ["frappe/hrms"]
-app_home = "/app/job-requisition"
+app_home = "/app/aihr-hiring-hq"
 
 add_to_apps_screen = [
     {
         "name": "aihr",
-        "logo": "/assets/frappe/images/frappe-framework-logo.svg",
+        "logo": "/assets/aihr/images/aihr-logo.svg",
         "title": "AIHR",
-        "route": "/app/job-requisition",
+        "route": "/app/aihr-hiring-hq",
     }
 ]
 

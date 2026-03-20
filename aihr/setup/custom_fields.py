@@ -28,11 +28,17 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
                 "insert_after": "aihr_hiring_profile_section",
             },
             {
+                "fieldname": "aihr_role_snapshot_html",
+                "fieldtype": "HTML",
+                "label": "Role Snapshot",
+                "insert_after": "aihr_priority",
+            },
+            {
                 "fieldname": "aihr_work_mode",
                 "fieldtype": "Select",
                 "label": "Work Mode",
                 "options": "Onsite\nHybrid\nRemote",
-                "insert_after": "aihr_priority",
+                "insert_after": "aihr_role_snapshot_html",
             },
             {
                 "fieldname": "aihr_column_break_profile",
@@ -106,10 +112,16 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
                 "insert_after": "aihr_recruitment_ops_section",
             },
             {
+                "fieldname": "aihr_pipeline_summary_html",
+                "fieldtype": "HTML",
+                "label": "Pipeline Summary",
+                "insert_after": "aihr_posting_owner",
+            },
+            {
                 "fieldname": "aihr_channel_mix",
                 "fieldtype": "Small Text",
                 "label": "Channel Mix",
-                "insert_after": "aihr_posting_owner",
+                "insert_after": "aihr_pipeline_summary_html",
             },
             {
                 "fieldname": "aihr_daily_sync_time",
