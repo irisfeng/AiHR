@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aihr"
+version = "0.1.0"
+description = "AI-first recruitment workflow extension for Frappe HR"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "AIHR Team" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = []
+pdf = ["pypdf>=4.2.0,<5"]
+
+[tool.setuptools.packages.find]
+include = ["aihr*"]
+
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<18.0.0"
+erpnext = ">=15.0.0,<18.0.0"
+hrms = ">=15.0.0,<18.0.0"
+

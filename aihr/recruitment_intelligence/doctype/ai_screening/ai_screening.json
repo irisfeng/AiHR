@@ -1,0 +1,161 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:AI-SCR-{#####}",
+ "creation": "2026-03-20 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "screening_details_section",
+  "job_applicant",
+  "job_opening",
+  "status",
+  "overall_score",
+  "scorecard_section",
+  "matched_skills",
+  "missing_skills",
+  "ai_summary",
+  "strengths",
+  "risks",
+  "suggested_questions",
+  "payload_section",
+  "parsed_resume_json",
+  "screening_payload_json"
+ ],
+ "fields": [
+  {
+   "fieldname": "screening_details_section",
+   "fieldtype": "Section Break",
+   "label": "Screening Details"
+  },
+  {
+   "fieldname": "job_applicant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Job Applicant",
+   "options": "Job Applicant",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "job_applicant.job_title",
+   "fieldname": "job_opening",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Job Opening",
+   "options": "Job Opening",
+   "read_only": 1
+  },
+  {
+   "default": "Ready for Review",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nReady for Review\nAdvance\nHold\nReject",
+   "reqd": 1
+  },
+  {
+   "fieldname": "overall_score",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Overall Score"
+  },
+  {
+   "fieldname": "scorecard_section",
+   "fieldtype": "Section Break",
+   "label": "Scorecard"
+  },
+  {
+   "fieldname": "matched_skills",
+   "fieldtype": "Small Text",
+   "label": "Matched Skills",
+   "read_only": 1
+  },
+  {
+   "fieldname": "missing_skills",
+   "fieldtype": "Small Text",
+   "label": "Missing Skills",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_summary",
+   "fieldtype": "Small Text",
+   "label": "AI Summary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "strengths",
+   "fieldtype": "Text",
+   "label": "Strengths",
+   "read_only": 1
+  },
+  {
+   "fieldname": "risks",
+   "fieldtype": "Text",
+   "label": "Risks",
+   "read_only": 1
+  },
+  {
+   "fieldname": "suggested_questions",
+   "fieldtype": "Text",
+   "label": "Suggested Questions",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payload_section",
+   "fieldtype": "Section Break",
+   "label": "Payload"
+  },
+  {
+   "fieldname": "parsed_resume_json",
+   "fieldtype": "Code",
+   "label": "Parsed Resume JSON",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "screening_payload_json",
+   "fieldtype": "Code",
+   "label": "Screening Payload JSON",
+   "options": "JSON",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-20 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Recruitment Intelligence",
+ "name": "AI Screening",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
+

@@ -1,0 +1,18 @@
+include MANIFEST.in
+include README.md
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include aihr *.css
+recursive-include aihr *.csv
+recursive-include aihr *.html
+recursive-include aihr *.js
+recursive-include aihr *.json
+recursive-include aihr *.md
+recursive-include aihr *.png
+recursive-include aihr *.py
+recursive-include aihr *.svg
+recursive-include aihr *.txt
+recursive-exclude aihr *.pyc
+
