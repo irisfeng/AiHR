@@ -1,15 +1,31 @@
 (function () {
-  const AIHR_ALLOWED_WORKSPACES = new Set(["AIHR 招聘作战台", "AIHR 用人经理台", "AIHR 面试官台"]);
+  const AIHR_ALLOWED_WORKSPACES = new Set(["AIHR 招聘总览", "AIHR 用人经理中心", "AIHR 面试协同中心"]);
   const AIHR_WORKSPACE_ROUTES = {
-    "AIHR 招聘作战台": "/app/aihr-hiring-hq",
-    "AIHR 用人经理台": "/app/aihr-manager-review",
-    "AIHR 面试官台": "/app/aihr-interview-desk",
+    "AIHR 招聘总览": "/app/aihr-hiring-hq",
+    "AIHR 用人经理中心": "/app/aihr-manager-review",
+    "AIHR 面试协同中心": "/app/aihr-interview-desk",
+  };
+  const AIHR_WORKSPACE_PATH_REDIRECTS = {
+    "/app/aihr-招聘总览": "/app/aihr-hiring-hq",
+    "/app/aihr-用人经理中心": "/app/aihr-manager-review",
+    "/app/aihr-面试协同中心": "/app/aihr-interview-desk",
   };
   const AIHR_VISIBLE_LABELS = {
-    "AIHR Hiring HQ": "AIHR 招聘作战台",
-    "AIHR Manager Review": "AIHR 用人经理台",
-    "AIHR Interview Desk": "AIHR 面试官台",
+    "AIHR 招聘作战台": "AIHR 招聘总览",
+    "AIHR 用人经理台": "AIHR 用人经理中心",
+    "AIHR 面试官台": "AIHR 面试协同中心",
+    "AIHR Hiring HQ": "AIHR 招聘总览",
+    "AIHR Manager Review": "AIHR 用人经理中心",
+    "AIHR Interview Desk": "AIHR 面试协同中心",
+    "AIHR Interview Control Room": "AIHR 面试概览",
+    "AIHR Feedback Console": "AIHR 反馈概览",
+    "AIHR Offer Handoff": "AIHR 录用概览",
+    "AIHR Onboarding Hub": "AIHR 入职概览",
     HR: "人力资源",
+    "招聘作战台": "招聘总览",
+    "岗位战情": "岗位概况",
+    "标准作战路径": "标准推进路径",
+    "岗位作战卡": "岗位概览卡",
     "AI Screening": "AI 初筛",
     "New AI Screening": "新建 AI 初筛",
     "Add AI Screening": "新增 AI 初筛",
@@ -70,6 +86,7 @@
 
   function initAIHRDeskShell() {
     document.body.classList.add("aihr-desk");
+    redirectWorkspaceAliasRoute();
     enhanceDeskShell();
 
     if (window.frappe && frappe.router && !window.__aihr_desk_router_bound) {
@@ -96,9 +113,18 @@
 
   function enhanceDeskShell() {
     document.body.classList.add("aihr-desk");
+    redirectWorkspaceAliasRoute();
     injectBrandLabel();
     filterWorkspaceSidebar();
     translateVisibleLabels();
+  }
+
+  function redirectWorkspaceAliasRoute() {
+    const normalizedPath = decodeURIComponent(window.location.pathname || "");
+    const target = AIHR_WORKSPACE_PATH_REDIRECTS[normalizedPath];
+    if (target && window.location.pathname !== target) {
+      window.location.replace(target);
+    }
   }
 
   function injectBrandLabel() {
@@ -182,6 +208,7 @@
 
     let translated = value || "";
     Object.keys(AIHR_VISIBLE_LABELS)
+      .filter((source) => source.length >= 4)
       .sort((left, right) => right.length - left.length)
       .forEach((source) => {
         if (translated.includes(source)) {

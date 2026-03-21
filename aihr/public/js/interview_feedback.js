@@ -85,7 +85,7 @@ async function renderFeedbackSnapshot(frm) {
   }
 
   if (frm.is_new()) {
-    field.$wrapper.html(renderEmpty("先保存反馈单，再生成 AIHR 面试反馈面板。"));
+    field.$wrapper.html(renderEmpty("先保存反馈单，再生成 AIHR 反馈概览。"));
     return;
   }
 
@@ -105,7 +105,7 @@ async function renderFeedbackSnapshot(frm) {
     <div style="border-radius: 18px; padding: 20px; background: linear-gradient(135deg, #fff7ed, #ffffff 45%, #f8fafc); border: 1px solid rgba(245, 158, 11, 0.18);">
       <div style="display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap;">
         <div style="max-width: 58%;">
-          <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #c2410c; font-weight: 700;">AIHR Feedback Console</div>
+          <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #c2410c; font-weight: 700;">AIHR 反馈概览</div>
           <div style="font-size: 28px; font-weight: 700; margin-top: 6px; color: #0f172a;">${escapeHtml(applicant.applicant_name || "面试反馈")}</div>
           <div style="margin-top: 8px; color: var(--text-muted); line-height: 1.7;">
             ${escapeHtml(opening.job_title || "未关联岗位")} · ${escapeHtml(interview.interview_round || "轮次待补充")}

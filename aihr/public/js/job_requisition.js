@@ -41,7 +41,7 @@ function renderRequisitionSnapshot(frm) {
   }
 
   if (frm.is_new()) {
-    field.$wrapper.html(renderRequisitionEmpty("先保存岗位需求，再生成 AIHR 岗位作战卡。"));
+    field.$wrapper.html(renderRequisitionEmpty("先保存岗位需求，再生成 AIHR 岗位概览卡。"));
     return;
   }
 
@@ -57,7 +57,7 @@ function renderRequisitionSnapshot(frm) {
     <div style="border-radius: 18px; padding: 20px; background: radial-gradient(circle at top left, #effcf6, #ffffff 48%, #eef6ff); border: 1px solid #d9ece5;">
       <div style="display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap;">
         <div>
-          <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #0f766e; font-weight: 700;">AIHR Role Snapshot</div>
+          <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #0f766e; font-weight: 700;">AIHR 岗位概览</div>
           <div style="font-size: 26px; font-weight: 700; margin-top: 6px;">${escapeHtml(frm.doc.designation || "待命名岗位")}</div>
           <div style="margin-top: 8px; color: var(--text-muted); line-height: 1.6;">
             ${escapeHtml(

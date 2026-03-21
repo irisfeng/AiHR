@@ -68,7 +68,7 @@ async function renderInterviewSnapshot(frm) {
   }
 
   if (frm.is_new()) {
-    field.$wrapper.html(renderInterviewEmpty("先保存面试安排，再生成 AIHR 面试协同面板。"));
+    field.$wrapper.html(renderInterviewEmpty("先保存面试安排，再生成 AIHR 面试概览。"));
     return;
   }
 
@@ -89,7 +89,7 @@ async function renderInterviewSnapshot(frm) {
     <div style="border-radius: 18px; padding: 20px; background: linear-gradient(135deg, #172554, #1e3a5f 52%, #23435c 100%); color: #fff; border: 1px solid rgba(15, 23, 42, 0.12); overflow: hidden;">
       <div style="display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap;">
         <div style="max-width: 58%;">
-          <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.72); font-weight: 700;">AIHR Interview Control Room</div>
+          <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.72); font-weight: 700;">AIHR 面试概览</div>
           <div style="font-size: 28px; font-weight: 700; margin-top: 6px;">${escapeHtml(applicant.applicant_name || frm.doc.job_applicant || "候选人面试")}</div>
           <div style="margin-top: 8px; color: rgba(255,255,255,0.8); line-height: 1.7;">
             ${escapeHtml(opening.job_title || "未关联岗位")} · ${escapeHtml(interview.interview_round || "轮次待补充")}

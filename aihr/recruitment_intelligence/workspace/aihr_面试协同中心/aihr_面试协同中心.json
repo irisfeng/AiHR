@@ -1,0 +1,126 @@
+{
+ "charts": [],
+ "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u9762\u8bd5\u534f\u540c\u6982\u89c8</b></span><div class=\\\"text-muted\\\">\u9762\u8bd5\u5b98\u53ea\u9700\u8981\u770b\u5019\u9009\u4eba\u6458\u8981\u3001\u8d44\u6599\u5305\u548c\u53cd\u9988\u5f55\u5165\uff0c\u4e0d\u7528\u5728\u7cfb\u7edf\u91cc\u8ff7\u8def\u3002</div>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5f85\u6267\u884c\u9762\u8bd5\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5f55\u5165\u53cd\u9988\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5019\u9009\u4eba\u6458\u8981\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u9762\u8bd5\u53cd\u9988\u5f52\u6863\", \"col\": 3}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u9762\u8bd5\u6267\u884c\u6a21\u5757</b></span><div class=\\\"text-muted\\\">\u5148\u770b\u8d44\u6599\u5305\uff0c\u518d\u586b\u7ed3\u6784\u5316\u53cd\u9988\uff0c\u8ba9\u7ed3\u8bba\u66f4\u5feb\u56de\u6d41\u4e3b\u6d41\u7a0b\u3002</div>\", \"col\": 12}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u9762\u8bd5\u6267\u884c\", \"col\": 6}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u5019\u9009\u4eba\u7b80\u62a5\", \"col\": 6}}]",
+ "creation": "2026-03-21 08:49:35.151798",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 1,
+ "icon": "calendar",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "AIHR \u9762\u8bd5\u534f\u540c\u4e2d\u5fc3",
+ "links": [
+  {
+   "description": "\u67e5\u770b\u8d44\u6599\u5305\u3001\u63a8\u8fdb\u9762\u8bd5\u548c\u56de\u6536\u7ed3\u6784\u5316\u53cd\u9988\u3002",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u9762\u8bd5\u6267\u884c",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u9762\u8bd5\u5b89\u6392",
+   "link_count": 0,
+   "link_to": "Interview",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5f55\u5165\u53cd\u9988",
+   "link_count": 0,
+   "link_to": "Interview Feedback",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "description": "\u5728\u9762\u8bd5\u524d\u5feb\u901f\u638c\u63e1\u5019\u9009\u4eba\u80cc\u666f\u3001\u98ce\u9669\u70b9\u548c\u8ffd\u95ee\u5efa\u8bae\u3002",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5019\u9009\u4eba\u7b80\u62a5",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5019\u9009\u4eba\u6458\u8981",
+   "link_count": 0,
+   "link_to": "Job Applicant",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AI \u6458\u8981\u6c60",
+   "link_count": 0,
+   "link_to": "AI Screening",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-03-21 09:48:03.787036",
+ "modified_by": "Administrator",
+ "module": "Recruitment Intelligence",
+ "name": "AIHR \u9762\u8bd5\u534f\u540c\u4e2d\u5fc3",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 0.0,
+ "shortcuts": [
+  {
+   "color": "#0f766e",
+   "doc_view": "List",
+   "format": "{} \u573a\u5f85\u6267\u884c",
+   "label": "\u5f85\u6267\u884c\u9762\u8bd5",
+   "link_to": "Interview",
+   "stats_filter": "{\"status\": [\"in\", [\"Pending\", \"Under Review\"]]}",
+   "type": "DocType"
+  },
+  {
+   "color": "#2563eb",
+   "doc_view": "List",
+   "format": "{} \u6761\u53cd\u9988",
+   "label": "\u5f55\u5165\u53cd\u9988",
+   "link_to": "Interview Feedback",
+   "stats_filter": "{\"docstatus\": [\"!=\", \"2\"]}",
+   "type": "DocType"
+  },
+  {
+   "color": "#7c3aed",
+   "doc_view": "List",
+   "format": "{} \u4f4d\u5019\u9009\u4eba",
+   "label": "\u5019\u9009\u4eba\u6458\u8981",
+   "link_to": "Job Applicant",
+   "stats_filter": "{\"aihr_ai_status\": [\"!=\", \"Rejected\"]}",
+   "type": "DocType"
+  },
+  {
+   "color": "#ea580c",
+   "doc_view": "List",
+   "format": "{} \u6761\u8bb0\u5f55",
+   "label": "\u9762\u8bd5\u53cd\u9988\u5f52\u6863",
+   "link_to": "Interview Feedback",
+   "stats_filter": "{\"docstatus\": [\"=\", \"1\"]}",
+   "type": "DocType"
+  }
+ ],
+ "title": "AIHR \u9762\u8bd5\u534f\u540c\u4e2d\u5fc3"
+}

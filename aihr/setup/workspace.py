@@ -6,11 +6,11 @@ from pathlib import Path
 
 WORKSPACE_NAME = "AIHR Hiring HQ"
 WORKSPACE_BLOCK_NAME = "AIHR Hiring HQ Block"
-WORKSPACE_BLOCK_LABEL = "AIHR 招聘作战台"
+WORKSPACE_BLOCK_LABEL = "AIHR 招聘总览"
 MANAGER_WORKSPACE_NAME = "AIHR Manager Review"
-MANAGER_WORKSPACE_LABEL = "AIHR 用人经理台"
+MANAGER_WORKSPACE_LABEL = "AIHR 用人经理中心"
 INTERVIEWER_WORKSPACE_NAME = "AIHR Interview Desk"
-INTERVIEWER_WORKSPACE_LABEL = "AIHR 面试官台"
+INTERVIEWER_WORKSPACE_LABEL = "AIHR 面试协同中心"
 
 AIHR_WORKSPACE_NAMES = {
     WORKSPACE_NAME,
@@ -175,7 +175,7 @@ def _workspace_content() -> list[dict]:
         {
             "type": "header",
             "data": {
-                "text": '<span class="h4"><b>功能模块</b></span><div class="text-muted">从需求、筛选、面试到录用，全部围绕 AIHR 招聘作战台组织。</div>',
+                "text": '<span class="h4"><b>功能模块</b></span><div class="text-muted">从需求、筛选、面试到录用，全部围绕 AIHR 招聘总览展开。</div>',
                 "col": 12,
             },
         },
@@ -288,7 +288,7 @@ def _manager_workspace_content() -> list[dict]:
         {
             "type": "header",
             "data": {
-                "text": '<span class="h4"><b>用人经理复核台</b></span><div class="text-muted">经理只看最需要判断的候选人、面试和 Offer，不再先翻 PDF 简历。</div>',
+                "text": '<span class="h4"><b>用人经理概览</b></span><div class="text-muted">经理只看最需要判断的候选人、面试和 Offer，不再先翻 PDF 简历。</div>',
                 "col": 12,
             },
         },
@@ -376,7 +376,7 @@ def _interviewer_workspace_content() -> list[dict]:
         {
             "type": "header",
             "data": {
-                "text": '<span class="h4"><b>面试官反馈台</b></span><div class="text-muted">面试官只需要看候选人摘要、资料包和反馈录入，不用在系统里迷路。</div>',
+                "text": '<span class="h4"><b>面试协同概览</b></span><div class="text-muted">面试官只需要看候选人摘要、资料包和反馈录入，不用在系统里迷路。</div>',
                 "col": 12,
             },
         },

@@ -39,7 +39,7 @@ async function renderOnboardingSnapshot(frm) {
   }
 
   if (frm.is_new()) {
-    field.$wrapper.html(renderEmpty("先保存入职交接单，再生成 AIHR 入职交接面板。"));
+    field.$wrapper.html(renderEmpty("先保存入职交接单，再生成 AIHR 入职概览。"));
     return;
   }
 
@@ -58,7 +58,7 @@ async function renderOnboardingSnapshot(frm) {
     <div style="border-radius: 18px; padding: 20px; background: linear-gradient(135deg, #ecfeff, #ffffff 42%, #f0fdf4); border: 1px solid rgba(14, 165, 233, 0.16);">
       <div style="display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap;">
         <div style="max-width: 58%;">
-          <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #0369a1; font-weight: 700;">AIHR Onboarding Hub</div>
+          <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #0369a1; font-weight: 700;">AIHR 入职概览</div>
           <div style="font-size: 28px; font-weight: 700; margin-top: 6px; color: #0f172a;">${escapeHtml(applicant.applicant_name || "入职交接")}</div>
           <div style="margin-top: 8px; color: var(--text-muted); line-height: 1.7;">
             ${escapeHtml(opening.job_title || "未关联岗位")} · 入职日期 ${escapeHtml(onboarding.date_of_joining || "待确认")}

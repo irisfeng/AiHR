@@ -49,13 +49,13 @@
         window.location.assign("/app/job-opening");
       }
       if (action === "open-hq-workspace") {
-        window.location.assign(workspaceRoute("AIHR 招聘作战台", "/app/aihr-hiring-hq"));
+        window.location.assign(workspaceRoute("AIHR 招聘总览", "/app/aihr-hiring-hq"));
       }
       if (action === "open-manager-workspace") {
-        window.location.assign(workspaceRoute("AIHR 用人经理台", "/app/aihr-manager-review"));
+        window.location.assign(workspaceRoute("AIHR 用人经理中心", "/app/aihr-manager-review"));
       }
       if (action === "open-interviewer-workspace") {
-        window.location.assign(workspaceRoute("AIHR 面试官台", "/app/aihr-interview-desk"));
+        window.location.assign(workspaceRoute("AIHR 面试协同中心", "/app/aihr-interview-desk"));
       }
       if (action === "open-applicants") {
         window.location.assign("/app/job-applicant");
@@ -67,7 +67,7 @@
   }
 
   function setLoadingState() {
-    const loading = '<div class="aihr-hq-loading">正在同步 AIHR 招聘态势...</div>';
+    const loading = '<div class="aihr-hq-loading">正在同步 AIHR 招聘概况...</div>';
     regions.metrics.innerHTML = loading;
     regions.stages.innerHTML = loading;
     regions.openings.innerHTML = loading;
@@ -79,7 +79,7 @@
     const focus = snapshot.hero || {};
     regions.heroFocus.textContent = focus.title || "招聘主链路已接入";
     regions.heroSubtitle.textContent =
-      focus.subtitle || "从岗位需求到候选人摘要，当前数据已在一个台面上汇总。";
+      focus.subtitle || "从岗位需求到候选人摘要，当前数据已在一个页面中汇总。";
   }
 
   function renderMetrics(metrics) {
@@ -216,13 +216,13 @@
   }
 
   function renderError() {
-    const message = emptyCard("招聘态势加载失败，请刷新页面或稍后重试。");
+    const message = emptyCard("招聘概况加载失败，请刷新页面或稍后重试。");
     regions.metrics.innerHTML = message;
     regions.stages.innerHTML = message;
     regions.openings.innerHTML = message;
     regions.queue.innerHTML = message;
     regions.candidates.innerHTML = message;
-    regions.heroFocus.textContent = "招聘态势加载失败";
+    regions.heroFocus.textContent = "招聘概况加载失败";
     regions.heroSubtitle.textContent = "请刷新页面或检查 AIHR 后端服务。";
   }
 

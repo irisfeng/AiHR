@@ -29,6 +29,14 @@ class TranslationCoverageTests(unittest.TestCase):
             "Job Offer": "Offer 管理",
             "Employee Onboarding": "入职交接",
             "HR": "人力资源",
+            "AIHR Hiring HQ": "AIHR 招聘总览",
+            "AIHR Manager Review": "AIHR 用人经理中心",
+            "AIHR Interview Desk": "AIHR 面试协同中心",
+            "Role Snapshot": "岗位概览",
+            "Interview Snapshot": "面试概览",
+            "Offer Snapshot": "录用概览",
+            "Feedback Snapshot": "反馈概览",
+            "Onboarding Snapshot": "入职概览",
         }
         for source, target in expected.items():
             self.assertEqual(translations.get(source), target)

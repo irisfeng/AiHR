@@ -35,8 +35,8 @@
     const hero = document.createElement("aside");
     hero.className = "aihr-login-hero";
     hero.innerHTML = `
-      <div class="aihr-login-kicker">AIHR OEM Shell</div>
-      <div class="aihr-login-hero-title">让招聘作战台看起来就像 AIHR 本身。</div>
+      <div class="aihr-login-kicker">AIHR 品牌后台</div>
+      <div class="aihr-login-hero-title">让招聘协同自然融入 AIHR。</div>
       <div class="aihr-login-hero-copy">
         用 Frappe 承载流程和数据，用 AIHR 承载品牌、协同和智能化体验。HR 团队打开系统，
         看到的应该是招聘主链路，而不是 ERP 模块清单。
