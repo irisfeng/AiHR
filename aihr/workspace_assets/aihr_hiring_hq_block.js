@@ -48,6 +48,15 @@
       if (action === "open-openings") {
         window.location.assign("/app/job-opening");
       }
+      if (action === "open-hq-workspace") {
+        window.location.assign(workspaceRoute("AIHR 招聘作战台", "/app/aihr-hiring-hq"));
+      }
+      if (action === "open-manager-workspace") {
+        window.location.assign(workspaceRoute("AIHR 用人经理台", "/app/aihr-manager-review"));
+      }
+      if (action === "open-interviewer-workspace") {
+        window.location.assign(workspaceRoute("AIHR 面试官台", "/app/aihr-interview-desk"));
+      }
       if (action === "open-applicants") {
         window.location.assign("/app/job-applicant");
       }
@@ -228,6 +237,12 @@
 
   function emptyCard(message) {
     return `<div class="aihr-hq-empty">${escapeHtml(message)}</div>`;
+  }
+
+  function workspaceRoute(label, fallback) {
+    const link = Array.from(document.querySelectorAll(".desk-sidebar a, .desk-sidebar .item-anchor"))
+      .find((element) => element.textContent && element.textContent.trim() === label);
+    return link?.getAttribute("href") || fallback;
   }
 
   function escapeHtml(value) {

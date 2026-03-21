@@ -6,6 +6,13 @@ app_email = "platform@example.com"
 app_license = "GPL-3.0-or-later"
 required_apps = ["frappe/hrms"]
 app_home = "/app/aihr-hiring-hq"
+app_logo_url = "/assets/aihr/images/aihr-logo.svg"
+
+app_include_css = ["/assets/aihr/css/aihr_desk.css"]
+app_include_js = ["/assets/aihr/js/aihr_desk.js"]
+
+web_include_css = ["/assets/aihr/css/aihr_login.css"]
+web_include_js = ["/assets/aihr/js/aihr_login.js"]
 
 add_to_apps_screen = [
     {

@@ -162,6 +162,44 @@
   margin-bottom: 20px;
 }
 
+.aihr-hq-role-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.aihr-hq-role-card {
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--aihr-border);
+  box-shadow: var(--aihr-shadow);
+}
+
+.aihr-hq-role-card--primary {
+  background: linear-gradient(180deg, rgba(236, 254, 255, 0.94), rgba(255, 255, 255, 0.95));
+}
+
+.aihr-hq-role-card__kicker {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--aihr-muted);
+}
+
+.aihr-hq-role-card h2 {
+  margin: 10px 0 8px;
+  font-size: 22px;
+}
+
+.aihr-hq-role-card p {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--aihr-muted);
+  line-height: 1.7;
+}
+
 .aihr-hq-metric {
   padding: 18px 18px 16px;
   position: relative;
@@ -420,6 +458,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .aihr-hq-role-strip,
   .aihr-hq-path {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -427,6 +466,7 @@
 
 @media (max-width: 960px) {
   .aihr-hq-hero,
+  .aihr-hq-role-strip,
   .aihr-hq-grid,
   .aihr-hq-stage-strip,
   .aihr-hq-metrics,
