@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import unquote
 
 from aihr.setup.workspace import (
     INTERVIEWER_WORKSPACE_LABEL,
@@ -8,10 +9,17 @@ from aihr.setup.workspace import (
     WORKSPACE_BLOCK_LABEL,
 )
 
+AIHR_DESK_HOME = "/app/aihr-hiring-hq"
 LEGACY_WORKSPACE_LABELS = {
     "AIHR 招聘作战台": WORKSPACE_BLOCK_LABEL,
     "AIHR 用人经理台": MANAGER_WORKSPACE_LABEL,
     "AIHR 面试官台": INTERVIEWER_WORKSPACE_LABEL,
+}
+
+WORKSPACE_PATH_REDIRECTS = {
+    "/app/aihr-招聘总览": AIHR_DESK_HOME,
+    "/app/aihr-用人经理中心": "/app/aihr-manager-review",
+    "/app/aihr-面试协同中心": "/app/aihr-interview-desk",
 }
 
 LEGACY_ROUTE_HISTORY_MAP = {
@@ -34,6 +42,15 @@ def normalize_route_history_route(route: str | None) -> str | None:
     if not normalized:
         return None
     return LEGACY_ROUTE_HISTORY_MAP.get(normalized, normalized)
+
+
+def normalize_desk_path(path: str | None) -> str | None:
+    normalized = unquote((path or "").strip())
+    if not normalized:
+        return None
+    if normalized == "/app":
+        return AIHR_DESK_HOME
+    return WORKSPACE_PATH_REDIRECTS.get(normalized, normalized)
 
 
 def should_hide_route_history(route: str | None) -> bool:
@@ -104,3 +121,16 @@ def extend_bootinfo(bootinfo) -> None:
     bootinfo.frequently_visited_links = sanitize_frequently_visited_links(
         list(bootinfo.get("frequently_visited_links") or [])
     )
+
+
+def redirect_desk_root() -> None:
+    import frappe
+    from werkzeug.routing import RequestRedirect
+
+    request = getattr(frappe.local, "request", None)
+    if not request or request.method not in {"GET", "HEAD"}:
+        return
+
+    target = normalize_desk_path(getattr(request, "path", ""))
+    if target and target != request.path:
+        raise RequestRedirect(target)

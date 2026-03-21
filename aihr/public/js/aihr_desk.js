@@ -10,6 +10,11 @@
     "/app/aihr-用人经理中心": "/app/aihr-manager-review",
     "/app/aihr-面试协同中心": "/app/aihr-interview-desk",
   };
+  const AIHR_WORKSPACE_SLUGS = {
+    "AIHR 招聘总览": "aihr-招聘总览",
+    "AIHR 用人经理中心": "aihr-用人经理中心",
+    "AIHR 面试协同中心": "aihr-面试协同中心",
+  };
   const AIHR_ROUTE_STRING_REDIRECTS = {
     "Workspaces/AIHR 招聘作战台": "Workspaces/AIHR 招聘总览",
     "Workspaces/AIHR 用人经理台": "Workspaces/AIHR 用人经理中心",
@@ -99,6 +104,7 @@
 
   function initAIHRDeskShell() {
     document.body.classList.add("aihr-desk");
+    patchRouterForAIHRWorkspaces();
     sanitizeSearchHistory();
     redirectWorkspaceAliasRoute();
     enhanceDeskShell();
@@ -127,6 +133,7 @@
 
   function enhanceDeskShell() {
     document.body.classList.add("aihr-desk");
+    patchRouterForAIHRWorkspaces();
     sanitizeSearchHistory();
     redirectWorkspaceAliasRoute();
     injectBrandLabel();
@@ -136,10 +143,89 @@
 
   function redirectWorkspaceAliasRoute() {
     const normalizedPath = decodeURIComponent(window.location.pathname || "");
-    const target = AIHR_WORKSPACE_PATH_REDIRECTS[normalizedPath];
+    const target = normalizeAihrUrl(normalizedPath);
     if (target && window.location.pathname !== target) {
       window.location.replace(target);
     }
+  }
+
+  function patchRouterForAIHRWorkspaces() {
+    if (!window.frappe || !frappe.router) {
+      return;
+    }
+
+    registerWorkspaceAliases();
+
+    if (!frappe.router.__aihr_make_url_patched) {
+      const originalMakeUrl = frappe.router.make_url.bind(frappe.router);
+      frappe.router.make_url = function patchedMakeUrl(params) {
+        const directUrl = getDirectWorkspaceUrl(params);
+        if (directUrl) {
+          return directUrl;
+        }
+
+        const generated = originalMakeUrl(params);
+        return normalizeAihrUrl(generated) || generated;
+      };
+      frappe.router.__aihr_make_url_patched = true;
+    }
+
+    if (!frappe.router.__aihr_push_state_patched) {
+      const originalPushState = frappe.router.push_state.bind(frappe.router);
+      frappe.router.push_state = function patchedPushState(url) {
+        return originalPushState(normalizeAihrUrl(url) || url);
+      };
+      frappe.router.__aihr_push_state_patched = true;
+    }
+  }
+
+  function registerWorkspaceAliases() {
+    if (!window.frappe || !frappe.router || !frappe.workspaces) {
+      return;
+    }
+
+    Object.entries(AIHR_WORKSPACE_ROUTES).forEach(([label, route]) => {
+      const stableSlug = route.replace("/app/", "");
+      const aliasSlug = AIHR_WORKSPACE_SLUGS[label];
+      const workspace = frappe.workspaces[stableSlug];
+      if (workspace && aliasSlug && !frappe.workspaces[aliasSlug]) {
+        frappe.workspaces[aliasSlug] = workspace;
+      }
+    });
+  }
+
+  function getDirectWorkspaceUrl(params) {
+    if (!params) {
+      return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
+    }
+
+    const route = Array.isArray(params) ? params.flat() : [params];
+    if (!route.length) {
+      return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
+    }
+
+    if (route[0] === "Workspaces" && AIHR_WORKSPACE_ROUTES[route[1]]) {
+      return AIHR_WORKSPACE_ROUTES[route[1]];
+    }
+
+    if (route.length === 1) {
+      return normalizeAihrUrl(`/app/${String(route[0]).replace(/^\/app\//, "")}`);
+    }
+
+    return null;
+  }
+
+  function normalizeAihrUrl(url) {
+    if (!url) {
+      return null;
+    }
+
+    const normalized = decodeURIComponent(String(url).trim());
+    if (normalized === "/app") {
+      return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
+    }
+
+    return AIHR_WORKSPACE_PATH_REDIRECTS[normalized] || null;
   }
 
   function sanitizeSearchHistory() {
@@ -208,7 +294,16 @@
 
   function injectBrandLabel() {
     const home = document.querySelector(".navbar-home");
-    if (!home || home.querySelector(".aihr-brand-text")) {
+    if (!home) {
+      return;
+    }
+
+    home.setAttribute("href", AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"]);
+    document.querySelectorAll('a[href="/app"], .btn-home').forEach((node) => {
+      node.setAttribute("href", AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"]);
+    });
+
+    if (home.querySelector(".aihr-brand-text")) {
       return;
     }
 
