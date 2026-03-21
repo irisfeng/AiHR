@@ -364,7 +364,7 @@
 
         const title = section.querySelector(".section-title");
         if (title && visibleItems.length > 0 && title.textContent.trim() === "Public") {
-          title.textContent = "AIHR 工作台";
+          title.textContent = "AIHR 导航";
         }
       });
     });

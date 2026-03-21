@@ -45,24 +45,46 @@ body.aihr-desk .layout-side-section {
   padding-top: 8px;
 }
 
+@media (min-width: 1200px) {
+  body.aihr-desk .layout-side-section.aihr-sidebar {
+    flex: 0 0 228px;
+    max-width: 228px;
+  }
+}
+
 body.aihr-desk .layout-side-section.aihr-sidebar .desk-sidebar {
   background: var(--aihr-panel);
   border: 1px solid var(--aihr-border);
   border-radius: 22px;
   box-shadow: var(--aihr-shadow);
-  padding: 14px 12px;
+  padding: 14px 12px 16px;
+  position: sticky;
+  top: 88px;
 }
 
 body.aihr-desk .desk-sidebar .standard-sidebar-label {
-  color: var(--aihr-muted);
+  align-items: center;
+  background: rgba(15, 118, 110, 0.08);
+  border-radius: 14px;
+  color: var(--aihr-brand-deep);
+  display: flex;
   font-size: 12px;
   font-weight: 700;
+  gap: 8px;
   letter-spacing: 0.08em;
+  margin-bottom: 10px;
+  padding: 10px 12px;
   text-transform: uppercase;
+}
+
+body.aihr-desk .desk-sidebar .sidebar-item-container {
+  margin-bottom: 8px;
 }
 
 body.aihr-desk .desk-sidebar .standard-sidebar-item {
   border-radius: 16px;
+  min-height: 48px;
+  padding: 8px 10px;
   transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 }
 
@@ -82,7 +104,19 @@ body.aihr-desk .desk-sidebar .sidebar-item-icon {
 
 body.aihr-desk .desk-sidebar .sidebar-item-label {
   color: var(--aihr-ink);
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.35;
+}
+
+body.aihr-desk .desk-sidebar .item-anchor {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+body.aihr-desk .desk-sidebar .sidebar-item-control {
+  display: none !important;
 }
 
 body.aihr-desk .desk-sidebar .aihr-hidden-nav,
