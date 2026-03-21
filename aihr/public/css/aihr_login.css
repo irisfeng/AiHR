@@ -20,7 +20,9 @@ body.aihr-login-page .page_content {
 }
 
 body.aihr-login-page section.for-login,
-body.aihr-login-page section.for-email-login {
+body.aihr-login-page section.for-email-login,
+body.aihr-login-page section.for-login-with-email-link,
+body.aihr-login-page section.for-forgot {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 36px;
@@ -245,7 +247,9 @@ body.aihr-login-page .login-content .sign-up-message a {
   }
 
   body.aihr-login-page section.for-login,
-  body.aihr-login-page section.for-email-login {
+  body.aihr-login-page section.for-email-login,
+  body.aihr-login-page section.for-login-with-email-link,
+  body.aihr-login-page section.for-forgot {
     grid-template-columns: 1fr;
     max-width: 560px;
     gap: 24px;

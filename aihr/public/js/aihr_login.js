@@ -1,5 +1,23 @@
 (function () {
   const DESK_ENTRY = "/app/aihr-hiring-hq";
+  const LOGIN_VARIANTS = {
+    ".for-login": {
+      title: "欢迎回到 AIHR",
+      subtitle: "进入岗位需求、候选人推进、面试协同与录用交接，保持招聘主线清晰可见。",
+    },
+    ".for-email-login": {
+      title: "使用邮箱登录",
+      subtitle: "如果当前站点启用了邮箱登录，可以继续使用邮箱和密码进入 AIHR。",
+    },
+    ".for-login-with-email-link": {
+      title: "通过邮件链接登录",
+      subtitle: "如果你更适合使用免密入口，可以通过邮箱链接完成验证并进入 AIHR。",
+    },
+    ".for-forgot": {
+      title: "重置登录密码",
+      subtitle: "输入你的邮箱后，系统会发送密码重置邮件，帮助你安全地回到 AIHR。",
+    },
+  };
 
   function initAIHRLoginShell() {
     if (window.location.pathname.startsWith("/app")) {
@@ -22,13 +40,18 @@
     document.body.classList.add("aihr-login-page");
     document.title = "AIHR 登录";
 
-    enhanceLoginSection(".for-login");
-    enhanceLoginSection(".for-login-with-email-link");
+    Object.keys(LOGIN_VARIANTS).forEach((selector) => enhanceLoginSection(selector));
+    bindLoginSectionLayoutSync();
   }
 
   function enhanceLoginSection(selector) {
     const section = document.querySelector(selector);
     if (!section || section.querySelector(".aihr-login-hero")) {
+      return;
+    }
+
+    const variant = LOGIN_VARIANTS[selector];
+    if (!variant) {
       return;
     }
 
@@ -44,7 +67,7 @@
     head.classList.add("aihr-login-intro");
     const title = head.querySelector("h4");
     if (title) {
-      title.textContent = selector === ".for-email-login" ? "通过邮箱链接登录" : "欢迎回到 AIHR";
+      title.textContent = variant.title;
     }
 
     if (!head.querySelector(".aihr-login-eyebrow")) {
@@ -57,10 +80,7 @@
     if (!head.querySelector(".aihr-login-subtitle")) {
       const subtitle = document.createElement("p");
       subtitle.className = "aihr-login-subtitle";
-      subtitle.textContent =
-        selector === ".for-login-with-email-link"
-          ? "如果你更适合使用免密入口，可以通过邮箱链接完成验证并进入 AIHR。"
-          : "进入岗位需求、候选人推进、面试协同与录用交接，保持招聘主线清晰可见。";
+      subtitle.textContent = variant.subtitle;
       head.appendChild(subtitle);
     }
 
@@ -114,6 +134,39 @@
       .map((item) => item.trim())
       .find((item) => item.startsWith(prefix))
       ?.slice(prefix.length);
+  }
+
+  function bindLoginSectionLayoutSync() {
+    const selectors = Object.keys(LOGIN_VARIANTS);
+    const sync = () => {
+      selectors.forEach((selector) => {
+        const section = document.querySelector(selector);
+        if (!section) {
+          return;
+        }
+
+        const visible = section.style.display !== "none" && getComputedStyle(section).display !== "none";
+        if (visible) {
+          section.style.display = "grid";
+        }
+      });
+    };
+
+    sync();
+    window.addEventListener("hashchange", () => window.requestAnimationFrame(sync));
+
+    selectors.forEach((selector) => {
+      const section = document.querySelector(selector);
+      if (!section) {
+        return;
+      }
+
+      const observer = new MutationObserver(() => window.requestAnimationFrame(sync));
+      observer.observe(section, {
+        attributes: true,
+        attributeFilter: ["style", "class"],
+      });
+    });
   }
 
   if (document.readyState === "loading") {
