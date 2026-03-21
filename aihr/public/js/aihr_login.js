@@ -1,6 +1,21 @@
 (function () {
+  const DESK_ENTRY = "/app/aihr-hiring-hq";
+
   function initAIHRLoginShell() {
+    if (window.location.pathname.startsWith("/app")) {
+      return;
+    }
+
+    const userId = getCookie("user_id");
+    const isGuest = !userId || userId === "Guest";
+
     if (!window.location.pathname.startsWith("/login")) {
+      redirectTo(isGuest ? `/login?redirect-to=${encodeURIComponent(DESK_ENTRY)}` : DESK_ENTRY);
+      return;
+    }
+
+    if (!isGuest) {
+      redirectTo(DESK_ENTRY);
       return;
     }
 
@@ -58,6 +73,22 @@
     if (title && title.textContent.includes("Login")) {
       title.textContent = "登录到 AIHR";
     }
+  }
+
+  function redirectTo(target) {
+    if (window.location.pathname + window.location.search === target) {
+      return;
+    }
+    window.location.replace(target);
+  }
+
+  function getCookie(name) {
+    const prefix = `${name}=`;
+    return document.cookie
+      .split(";")
+      .map((item) => item.trim())
+      .find((item) => item.startsWith(prefix))
+      ?.slice(prefix.length);
   }
 
   if (document.readyState === "loading") {
