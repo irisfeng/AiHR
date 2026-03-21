@@ -5,6 +5,23 @@
     "AIHR 用人经理中心": "/app/aihr-manager-review",
     "AIHR 面试协同中心": "/app/aihr-interview-desk",
   };
+  const AIHR_WORKSPACE_LINKS = [
+    {
+      label: "AIHR 招聘总览",
+      route: "/app/aihr-hiring-hq",
+      meta: "招聘主线",
+    },
+    {
+      label: "AIHR 用人经理中心",
+      route: "/app/aihr-manager-review",
+      meta: "经理复核",
+    },
+    {
+      label: "AIHR 面试协同中心",
+      route: "/app/aihr-interview-desk",
+      meta: "面试推进",
+    },
+  ];
   const AIHR_WORKSPACE_PATH_REDIRECTS = {
     "/app/aihr-招聘总览": "/app/aihr-hiring-hq",
     "/app/aihr-用人经理中心": "/app/aihr-manager-review",
@@ -344,6 +361,10 @@
         wrapper.classList.add("aihr-sidebar");
       }
 
+      if (renderCustomWorkspaceSidebar(sidebar)) {
+        return;
+      }
+
       let visibleSectionCount = 0;
 
       sidebar.querySelectorAll(".sidebar-item-container").forEach((item) => {
@@ -375,6 +396,59 @@
 
       sidebar.classList.toggle("aihr-single-section", visibleSectionCount <= 1);
     });
+  }
+
+  function renderCustomWorkspaceSidebar(sidebar) {
+    if (!sidebar || !isAihrWorkspacePath()) {
+      sidebar?.classList.remove("aihr-workspace-sidebar");
+      return false;
+    }
+
+    const currentPath = normalizeAihrUrl(decodeURIComponent(window.location.pathname || "")) || decodeURIComponent(window.location.pathname || "");
+    const signature = AIHR_WORKSPACE_LINKS.map((item) => item.label).join("|");
+
+    if (sidebar.dataset.aihrWorkspaceSignature !== signature || !sidebar.querySelector(".aihr-workspace-nav")) {
+      sidebar.innerHTML = `
+        <div class="aihr-workspace-nav">
+          <div class="aihr-workspace-nav-title">AIHR 导航</div>
+          <div class="aihr-workspace-nav-list">
+            ${AIHR_WORKSPACE_LINKS.map(
+              (item) => `
+                <a class="aihr-workspace-link" data-route="${item.route}" href="${item.route}">
+                  <span class="aihr-workspace-link-label">${item.label}</span>
+                  <span class="aihr-workspace-link-meta">${item.meta}</span>
+                </a>
+              `
+            ).join("")}
+          </div>
+        </div>
+      `;
+      sidebar.dataset.aihrWorkspaceSignature = signature;
+    }
+
+    sidebar.classList.add("aihr-workspace-sidebar", "aihr-single-section");
+    Array.from(sidebar.children).forEach((child) => {
+      if (child.classList.contains("aihr-workspace-nav")) {
+        child.style.display = "";
+        child.removeAttribute("aria-hidden");
+        return;
+      }
+
+      child.classList.add("aihr-hidden-section");
+      child.style.display = "none";
+      child.setAttribute("aria-hidden", "true");
+    });
+
+    sidebar.querySelectorAll(".aihr-workspace-link").forEach((link) => {
+      link.classList.toggle("is-active", link.getAttribute("data-route") === currentPath);
+    });
+
+    return true;
+  }
+
+  function isAihrWorkspacePath() {
+    const currentPath = normalizeAihrUrl(decodeURIComponent(window.location.pathname || "")) || decodeURIComponent(window.location.pathname || "");
+    return Object.values(AIHR_WORKSPACE_ROUTES).includes(currentPath);
   }
 
   function translateVisibleLabels() {
