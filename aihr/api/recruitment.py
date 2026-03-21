@@ -17,6 +17,7 @@ from aihr.services.recruitment_ops import (
     get_offer_next_action,
     get_screening_next_action,
 )
+from aihr.services.resume_intake import extract_resume_archive, summarize_archive_results
 from aihr.services.resume_parser import extract_text_from_file, parse_resume_text
 from aihr.services.screening import build_agency_brief, screen_candidate
 
@@ -59,6 +60,82 @@ def preview_resume_screening(
 @whitelist()
 def build_requisition_agency_brief(payload: dict[str, Any]) -> str:
     return build_agency_brief(payload)
+
+
+@whitelist()
+def create_resume_intake_batch(
+    job_opening: str,
+    archive_file: str,
+    supplier_name: str | None = None,
+    source_channel: str | None = None,
+    auto_run_screening: int = 1,
+) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for importing resume archives.")
+
+    from frappe.utils import now_datetime
+
+    batch_id = f"RIB-{now_datetime().strftime('%Y%m%d%H%M%S')}"
+    archive_path = _resolve_file_url_to_path(archive_file)
+    opening = frappe.get_doc("Job Opening", job_opening)
+    archive_items = extract_resume_archive(archive_path)
+    archive_summary = summarize_archive_results(archive_items)
+
+    imported_applicants: list[str] = []
+    log_lines = [
+        f"批次：{batch_id}",
+        f"岗位：{opening.job_title or opening.name}",
+        f"来源渠道：{source_channel or '供应商线下包'}",
+        f"供应商：{supplier_name or '未填写'}",
+    ]
+
+    for item in archive_items:
+        if item["status"] != "Parsed":
+            log_lines.append(f"{item['file_name']}：{item['status']} - {item.get('reason') or '未处理'}")
+            continue
+
+        applicant, created = _upsert_job_applicant_from_archive_item(
+            opening=opening,
+            batch_reference=batch_id,
+            supplier_name=supplier_name or "",
+            source_channel=source_channel or "供应商线下包",
+            archive_item=item,
+        )
+        imported_applicants.append(applicant.name)
+
+        if int(auto_run_screening or 0):
+            screen_job_applicant(applicant.name, save=1)
+            screening_label = "已生成 AI 摘要"
+        else:
+            screening_label = "已入库，待手动生成 AI 摘要"
+
+        action_label = "新建候选人" if created else "更新候选人"
+        log_lines.append(f"{item['file_name']}：{action_label} -> {applicant.name}，{screening_label}")
+
+    if len(imported_applicants) and not archive_summary["failed_count"] and not archive_summary["unsupported_count"]:
+        status = "Completed"
+    elif len(imported_applicants):
+        status = "Completed With Issues"
+    else:
+        status = "Failed"
+
+    return {
+        "batch": batch_id,
+        "status": status,
+        "summary": {
+            "total_files": archive_summary["total_files"],
+            "imported_count": len(imported_applicants),
+            "skipped_count": archive_summary["unsupported_count"],
+            "failed_count": archive_summary["failed_count"],
+        },
+        "job_applicants": imported_applicants,
+        "intake_log": "\n".join(log_lines),
+    }
+
+
+@whitelist()
+def process_resume_intake_batch(batch_name: str) -> dict[str, Any]:
+    raise NotImplementedError("Persistent batch reprocessing is not enabled in the current MVP.")
 
 
 @whitelist()
@@ -1271,16 +1348,103 @@ def _extract_resume_text_from_attachment(file_url: str) -> str:
     if not file_url:
         return ""
 
-    site_path = Path(frappe.get_site_path())
-    relative_path = file_url.lstrip("/")
-    file_path = site_path / relative_path
-    if not file_path.exists():
-        file_path = site_path / "public" / "files" / Path(file_url).name
-    if not file_path.exists():
-        file_path = site_path / "private" / "files" / Path(file_url).name
-    if not file_path.exists():
+    try:
+        file_path = _resolve_file_url_to_path(file_url)
+    except FileNotFoundError:
         return ""
     return extract_text_from_file(file_path)
+
+
+def _resolve_file_url_to_path(file_url: str) -> Path:
+    if not file_url:
+        raise FileNotFoundError("Missing file URL.")
+
+    site_path = Path(frappe.get_site_path())
+    relative_path = file_url.lstrip("/")
+    candidates = [
+        site_path / relative_path,
+        site_path / "public" / "files" / Path(file_url).name,
+        site_path / "private" / "files" / Path(file_url).name,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(f"File not found for URL: {file_url}")
+
+
+def _upsert_job_applicant_from_archive_item(
+    opening,
+    batch_reference: str,
+    supplier_name: str,
+    source_channel: str,
+    archive_item: dict[str, Any],
+):
+    from frappe.utils.file_manager import save_file
+
+    parsed_resume = archive_item.get("parsed_resume") or {}
+    email = (parsed_resume.get("emails") or [""])[0]
+    phone = (parsed_resume.get("phones") or [""])[0]
+    applicant_name = parsed_resume.get("name") or Path(archive_item["file_name"]).stem
+
+    applicant = _find_existing_job_applicant(opening.name, email, phone, applicant_name)
+    created = applicant is None
+    if not applicant:
+        applicant = frappe.new_doc("Job Applicant")
+        applicant.job_title = opening.name
+        applicant.status = "Open"
+
+    applicant.applicant_name = applicant_name
+    applicant.email_id = email or getattr(applicant, "email_id", "")
+    applicant.phone_number = phone or getattr(applicant, "phone_number", "")
+    applicant.country = getattr(applicant, "country", "") or "China"
+    applicant.aihr_resume_text = archive_item.get("resume_text", "")
+    applicant.aihr_resume_file_name = archive_item["file_name"]
+    applicant.aihr_resume_source_supplier = supplier_name
+    applicant.aihr_resume_source_channel = source_channel
+    applicant.aihr_resume_intake_batch = batch_reference
+    applicant.aihr_resume_parse_status = archive_item.get("status") or "Parsed"
+    if not getattr(applicant, "aihr_ai_status", None):
+        applicant.aihr_ai_status = "Not Screened"
+    try:
+        frappe.flags.aihr_skip_auto_screening = True
+        applicant.save(ignore_permissions=True)
+
+        saved_file = save_file(
+            archive_item["file_name"],
+            archive_item.get("content", b""),
+            applicant.doctype,
+            applicant.name,
+            is_private=1,
+            df="resume_attachment",
+        )
+        applicant.resume_attachment = saved_file.file_url
+        applicant.save(ignore_permissions=True)
+    finally:
+        frappe.flags.aihr_skip_auto_screening = False
+
+    return applicant, created
+
+
+def _find_existing_job_applicant(job_opening: str, email: str, phone: str, applicant_name: str):
+    if email:
+        existing = frappe.db.exists("Job Applicant", {"email_id": email})
+        if existing:
+            return frappe.get_doc("Job Applicant", existing)
+
+    if phone:
+        existing = frappe.db.exists("Job Applicant", {"job_title": job_opening, "phone_number": phone})
+        if existing:
+            return frappe.get_doc("Job Applicant", existing)
+
+    if applicant_name:
+        existing = frappe.db.exists(
+            "Job Applicant",
+            {"job_title": job_opening, "applicant_name": applicant_name},
+        )
+        if existing:
+            return frappe.get_doc("Job Applicant", existing)
+
+    return None
 
 
 def _upsert_ai_screening(applicant, parsed_resume: dict[str, Any], screening: dict[str, Any]) -> None:

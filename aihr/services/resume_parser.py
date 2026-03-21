@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Iterable
+from xml.etree import ElementTree as ET
+from zipfile import ZipFile
 
 DEFAULT_SKILL_LEXICON = {
     "python",
@@ -60,7 +64,8 @@ LOCATION_RE = re.compile(
 
 def extract_text_from_file(file_path: str | Path) -> str:
     path = Path(file_path)
-    if path.suffix.lower() == ".pdf":
+    suffix = path.suffix.lower()
+    if suffix == ".pdf":
         try:
             from pypdf import PdfReader
         except Exception:
@@ -69,7 +74,59 @@ def extract_text_from_file(file_path: str | Path) -> str:
         reader = PdfReader(str(path))
         return "\n".join(page.extract_text() or "" for page in reader.pages).strip()
 
+    if suffix == ".docx":
+        return extract_text_from_docx(path)
+
+    if suffix == ".doc":
+        return extract_text_from_legacy_doc(path)
+
     return path.read_text(encoding="utf-8", errors="ignore").strip()
+
+
+def extract_text_from_docx(file_path: str | Path) -> str:
+    path = Path(file_path)
+    if not path.exists():
+        return ""
+
+    try:
+        with ZipFile(path) as archive:
+            xml_bytes = archive.read("word/document.xml")
+    except Exception:
+        return ""
+
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError:
+        return ""
+
+    namespace = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    paragraphs: list[str] = []
+    for paragraph in root.findall(".//w:p", namespace):
+        texts = [node.text or "" for node in paragraph.findall(".//w:t", namespace)]
+        content = "".join(texts).strip()
+        if content:
+            paragraphs.append(content)
+    return "\n".join(paragraphs).strip()
+
+
+def extract_text_from_legacy_doc(file_path: str | Path) -> str:
+    antiword = shutil.which("antiword")
+    if not antiword:
+        return ""
+
+    try:
+        result = subprocess.run(
+            [antiword, str(file_path)],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+    except Exception:
+        return ""
+
+    return (result.stdout or "").strip()
 
 
 def parse_resume_text(text: str, skill_lexicon: Iterable[str] | None = None) -> dict[str, object]:

@@ -14,6 +14,10 @@ PORTAL_PATH_REDIRECTS = {
     "/me": AIHR_DESK_HOME,
     "/my-account": AIHR_DESK_HOME,
 }
+DESK_PREFIX_REDIRECTS = (
+    "/app/user-profile",
+    "/app/leaderboard",
+)
 LEGACY_WORKSPACE_LABELS = {
     "AIHR 招聘作战台": WORKSPACE_BLOCK_LABEL,
     "AIHR 用人经理台": MANAGER_WORKSPACE_LABEL,
@@ -58,6 +62,8 @@ def normalize_desk_path(path: str | None, user: str | None = None) -> str | None
         return AIHR_DESK_HOME
     if normalized in PORTAL_PATH_REDIRECTS:
         return PORTAL_PATH_REDIRECTS[normalized]
+    if any(normalized.startswith(prefix) for prefix in DESK_PREFIX_REDIRECTS):
+        return AIHR_DESK_HOME
     return WORKSPACE_PATH_REDIRECTS.get(normalized, normalized)
 
 

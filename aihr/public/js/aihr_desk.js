@@ -27,6 +27,7 @@
     "/app/aihr-用人经理中心": "/app/aihr-manager-review",
     "/app/aihr-面试协同中心": "/app/aihr-interview-desk",
   };
+  const AIHR_BLOCKED_DESK_PREFIXES = ["/app/user-profile", "/app/leaderboard"];
   const AIHR_WORKSPACE_SLUGS = {
     "AIHR 招聘总览": "aihr-招聘总览",
     "AIHR 用人经理中心": "aihr-用人经理中心",
@@ -242,6 +243,9 @@
     if (normalized === "/app") {
       return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
     }
+    if (AIHR_BLOCKED_DESK_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+      return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
+    }
 
     return AIHR_WORKSPACE_PATH_REDIRECTS[normalized] || null;
   }
@@ -348,7 +352,17 @@
       .querySelectorAll(".dropdown-navbar-user [data-label='View Website'], .dropdown-navbar-user .dropdown-item")
       .forEach((node) => {
         const text = (node.textContent || "").trim();
-        if (text === "查看网站" || text === "View Website") {
+        const href = node.getAttribute?.("href") || "";
+        if (
+          text === "查看网站" ||
+          text === "View Website" ||
+          text === "我的资料" ||
+          text === "My Profile" ||
+          text === "User Profile" ||
+          text === "排行榜" ||
+          text === "Leaderboard" ||
+          AIHR_BLOCKED_DESK_PREFIXES.some((prefix) => href.startsWith(prefix))
+        ) {
           node.remove();
         }
       });

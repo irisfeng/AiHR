@@ -20,6 +20,10 @@ frappe.ui.form.on("Job Opening", {
       });
     }
 
+    frm.add_custom_button("导入简历压缩包", () => {
+      openResumeImportDialog(frm);
+    });
+
     frm.add_custom_button("批量 AI 初筛", async () => {
       const response = await frappe.call({
         method: "aihr.api.recruitment.screen_job_opening_applicants",
@@ -182,6 +186,72 @@ function darkMetric(label, value) {
       <div style="font-size: 20px; font-weight: 700;">${escapeHtml(value)}</div>
     </div>
   `;
+}
+
+function openResumeImportDialog(frm) {
+  const dialog = new frappe.ui.Dialog({
+    title: "导入简历压缩包",
+    fields: [
+      {
+        fieldname: "archive_file",
+        fieldtype: "Attach",
+        label: "ZIP 压缩包",
+        reqd: 1,
+        description: "支持上传包含多份 PDF / DOCX / DOC / TXT 简历的 ZIP 文件。",
+      },
+      {
+        fieldname: "supplier_name",
+        fieldtype: "Data",
+        label: "供应商名称",
+      },
+      {
+        fieldname: "source_channel",
+        fieldtype: "Data",
+        label: "来源渠道",
+        default: "供应商线下包",
+      },
+      {
+        fieldname: "auto_run_screening",
+        fieldtype: "Check",
+        label: "导入后自动生成 AI 摘要",
+        default: 1,
+      },
+    ],
+    primary_action_label: "开始导入",
+    primary_action: async (values) => {
+      const response = await frappe.call({
+        method: "aihr.api.recruitment.create_resume_intake_batch",
+        args: {
+          job_opening: frm.doc.name,
+          archive_file: values.archive_file,
+          supplier_name: values.supplier_name || "",
+          source_channel: values.source_channel || "",
+          auto_run_screening: values.auto_run_screening ? 1 : 0,
+        },
+        freeze: true,
+        freeze_message: "正在拆分压缩包并导入候选人...",
+      });
+
+      const result = response.message || {};
+      dialog.hide();
+      await frm.reload_doc();
+      await renderOpeningSnapshot(frm);
+      frappe.msgprint({
+        title: "导入完成",
+        message: `
+          <div style="line-height: 1.8;">
+            <div>导入批次：<b>${escapeHtml(result.batch || "")}</b></div>
+            <div>成功入库：<b>${Number(result.summary?.imported_count || 0)}</b></div>
+            <div>跳过文件：<b>${Number(result.summary?.skipped_count || 0)}</b></div>
+            <div>失败文件：<b>${Number(result.summary?.failed_count || 0)}</b></div>
+            <div style="margin-top: 10px; white-space: pre-wrap; color: var(--text-muted);">${escapeHtml(result.intake_log || "暂无导入日志。")}</div>
+          </div>
+        `,
+      });
+    },
+  });
+
+  dialog.show();
 }
 
 function hintCard(label, value) {

@@ -156,10 +156,41 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
                 "insert_after": "aihr_candidate_ops_section",
             },
             {
+                "fieldname": "aihr_resume_file_name",
+                "fieldtype": "Data",
+                "label": "Resume File Name",
+                "insert_after": "aihr_resume_text",
+            },
+            {
+                "fieldname": "aihr_resume_source_supplier",
+                "fieldtype": "Data",
+                "label": "Resume Supplier",
+                "insert_after": "aihr_resume_file_name",
+            },
+            {
+                "fieldname": "aihr_resume_source_channel",
+                "fieldtype": "Data",
+                "label": "Resume Source Channel",
+                "insert_after": "aihr_resume_source_supplier",
+            },
+            {
+                "fieldname": "aihr_resume_intake_batch",
+                "fieldtype": "Data",
+                "label": "Resume Intake Batch",
+                "insert_after": "aihr_resume_source_channel",
+            },
+            {
+                "fieldname": "aihr_resume_parse_status",
+                "fieldtype": "Select",
+                "label": "Resume Parse Status",
+                "options": "Pending\nParsed\nUnsupported\nFailed",
+                "insert_after": "aihr_resume_intake_batch",
+            },
+            {
                 "fieldname": "aihr_summary_card_html",
                 "fieldtype": "HTML",
                 "label": "AI Summary Card",
-                "insert_after": "aihr_resume_text",
+                "insert_after": "aihr_resume_parse_status",
             },
             {
                 "fieldname": "aihr_ai_status",

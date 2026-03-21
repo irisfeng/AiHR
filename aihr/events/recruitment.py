@@ -167,6 +167,8 @@ def sync_employee_onboarding_defaults(doc, method=None) -> None:
 def _auto_screen_job_applicant(doc, force: bool) -> None:
     if getattr(frappe.flags, "in_aihr_screening", False):
         return
+    if getattr(frappe.flags, "aihr_skip_auto_screening", False):
+        return
 
     if not getattr(doc, "job_title", None):
         return
