@@ -8,8 +8,8 @@ required_apps = ["frappe/hrms"]
 app_home = "/app/aihr-hiring-hq"
 app_logo_url = "/assets/aihr/images/aihr-logo.svg"
 
-app_include_css = ["/assets/aihr/css/aihr_desk.css"]
-app_include_js = ["/assets/aihr/js/aihr_desk.js"]
+app_include_css = ["/assets/aihr/css/aihr_desk_v2.css"]
+app_include_js = ["/assets/aihr/js/aihr_desk_v2.js"]
 
 LOGIN_ASSET_VERSION = "20260321-login-v4"
 
