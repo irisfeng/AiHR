@@ -72,15 +72,14 @@
     hero.className = "aihr-login-hero";
     hero.innerHTML = `
       <div class="aihr-login-kicker">AIHR 招聘后台</div>
-      <div class="aihr-login-hero-title">让招聘流程回到一个清晰、稳定的工作界面里。</div>
+      <div class="aihr-login-hero-title">让招聘流程回到清晰、稳定的工作界面。</div>
       <div class="aihr-login-hero-copy">
         岗位需求、候选人、面试反馈、Offer 与入职交接统一收口在同一条主线上。
-        AI 优先承担整理、摘要与提醒，人保留判断、确认与关键决策。
+        AI 负责整理、摘要与提醒，人保留判断与确认。
       </div>
       <div class="aihr-login-points">
         <div class="aihr-login-point">优先服务 HR 与用人经理的日常推进，而不是展示 ERP 模块清单。</div>
         <div class="aihr-login-point">支持供应商简历包导入、候选人建档、AI 初筛与面试协同。</div>
-        <div class="aihr-login-point">中文优先，界面保持克制、稳定，适合国内团队持续落地。</div>
       </div>
       <div class="aihr-login-metrics">
         <div class="aihr-login-metric">
