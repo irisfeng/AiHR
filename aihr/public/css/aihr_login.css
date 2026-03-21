@@ -238,7 +238,7 @@ body.aihr-login-page .login-content .sign-up-message a {
   font-weight: 700;
 }
 
-@media (max-width: 991px) {
+@media (max-width: 860px) {
   body.aihr-login-page .page_content {
     padding: 24px 16px;
     align-items: flex-start;

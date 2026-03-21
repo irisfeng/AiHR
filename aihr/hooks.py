@@ -11,8 +11,10 @@ app_logo_url = "/assets/aihr/images/aihr-logo.svg"
 app_include_css = ["/assets/aihr/css/aihr_desk.css"]
 app_include_js = ["/assets/aihr/js/aihr_desk.js"]
 
-web_include_css = ["/assets/aihr/css/aihr_login.css"]
-web_include_js = ["/assets/aihr/js/aihr_login.js"]
+LOGIN_ASSET_VERSION = "20260321-login-v4"
+
+web_include_css = [f"/assets/aihr/css/aihr_login.css?v={LOGIN_ASSET_VERSION}"]
+web_include_js = [f"/assets/aihr/js/aihr_login.js?v={LOGIN_ASSET_VERSION}"]
 
 add_to_apps_screen = [
     {
