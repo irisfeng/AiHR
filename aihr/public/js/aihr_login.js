@@ -73,7 +73,7 @@
     hero.className = "aihr-login-hero";
     hero.innerHTML = `
       <div class="aihr-login-kicker">AIHR 招聘后台</div>
-      <div class="aihr-login-hero-title">让招聘流程回到一个清晰、安静的界面里。</div>
+      <div class="aihr-login-hero-title">让招聘流程回到一个清晰、稳定的工作界面里。</div>
       <div class="aihr-login-hero-copy">
         岗位需求、候选人、面试反馈、Offer 与入职交接统一收口在同一条主线上。
         AI 优先承担整理、摘要与提醒，人保留判断、确认与关键决策。

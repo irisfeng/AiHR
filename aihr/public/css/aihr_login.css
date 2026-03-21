@@ -22,10 +22,10 @@ body.aihr-login-page .page_content {
 body.aihr-login-page section.for-login,
 body.aihr-login-page section.for-email-login {
   display: grid;
-  grid-template-columns: minmax(360px, 440px) minmax(420px, 560px);
-  gap: 44px;
-  align-items: center;
-  max-width: 1120px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 36px;
+  align-items: stretch;
+  max-width: 1240px;
   margin: 0 auto;
   width: 100%;
 }
@@ -33,14 +33,22 @@ body.aihr-login-page section.for-email-login {
 .aihr-login-panel {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  justify-content: center;
+  gap: 28px;
+  min-height: 680px;
+  padding: 38px 40px;
+  border-radius: 30px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 28px 68px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(18px);
 }
 
 .aihr-login-intro {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 420px;
+  max-width: 520px;
 }
 
 .aihr-login-intro .app-logo {
@@ -74,12 +82,14 @@ body.aihr-login-page section.for-email-login {
 }
 
 body.aihr-login-page .login-content.page-card {
-  border-radius: 26px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 24px 54px rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(16px);
-  padding: 10px 6px;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  backdrop-filter: none;
+  padding: 0;
+  width: 100%;
+  max-width: none;
 }
 
 body.aihr-login-page .page-card-head {
@@ -129,12 +139,16 @@ body.aihr-login-page .login-content .sign-up-message a {
   position: relative;
   overflow: hidden;
   border-radius: 30px;
-  padding: 36px 34px;
+  padding: 42px 40px;
+  min-height: 680px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 28%),
     linear-gradient(155deg, #0f172a 0%, #155e63 56%, #1395d4 100%);
   color: #ffffff;
-  box-shadow: 0 32px 72px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 32px 72px rgba(15, 23, 42, 0.14);
 }
 
 .aihr-login-hero::after {
@@ -158,10 +172,10 @@ body.aihr-login-page .login-content .sign-up-message a {
 
 .aihr-login-hero-title {
   margin-top: 16px;
-  font-size: 52px;
-  line-height: 1.06;
+  font-size: 46px;
+  line-height: 1.08;
   font-weight: 700;
-  max-width: 8.5em;
+  max-width: 9.2em;
 }
 
 .aihr-login-hero-copy {
@@ -169,7 +183,7 @@ body.aihr-login-page .login-content .sign-up-message a {
   color: rgba(255, 255, 255, 0.82);
   line-height: 1.85;
   font-size: 15px;
-  max-width: 32em;
+  max-width: 30em;
 }
 
 .aihr-login-points {
@@ -237,8 +251,17 @@ body.aihr-login-page .login-content .sign-up-message a {
     gap: 24px;
   }
 
+  .aihr-login-panel,
+  .aihr-login-hero {
+    min-height: auto;
+  }
+
   .aihr-login-hero {
     order: 2;
+    padding: 28px 24px;
+  }
+
+  .aihr-login-panel {
     padding: 28px 24px;
   }
 
