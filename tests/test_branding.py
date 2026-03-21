@@ -4,6 +4,7 @@ from aihr.setup.branding import (
     is_aihr_workspace,
     should_reset_default_app,
     should_reset_default_workspace,
+    should_reset_language,
 )
 from aihr.setup.workspace import (
     INTERVIEWER_WORKSPACE_LABEL,
@@ -34,6 +35,11 @@ class BrandingTests(unittest.TestCase):
         self.assertTrue(should_reset_default_app("frappe"))
         self.assertTrue(should_reset_default_app("hrms"))
         self.assertFalse(should_reset_default_app("aihr"))
+
+    def test_resets_english_language_defaults(self):
+        self.assertTrue(should_reset_language(None))
+        self.assertTrue(should_reset_language("en"))
+        self.assertFalse(should_reset_language("zh"))
 
 
 if __name__ == "__main__":

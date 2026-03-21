@@ -5,6 +5,20 @@
     "AIHR 用人经理台": "/app/aihr-manager-review",
     "AIHR 面试官台": "/app/aihr-interview-desk",
   };
+  const AIHR_VISIBLE_LABELS = {
+    "AIHR Hiring HQ": "AIHR 招聘作战台",
+    "AIHR Manager Review": "AIHR 用人经理台",
+    "AIHR Interview Desk": "AIHR 面试官台",
+    "AI Screening": "AI 初筛",
+    "Job Requisition": "岗位需求单",
+    "Job Opening": "招聘中岗位",
+    "Job Applicant": "候选人档案",
+    Interview: "面试安排",
+    "Interview Feedback": "面试反馈",
+    "Job Offer": "Offer 管理",
+    "Employee Onboarding": "入职交接",
+    Employee: "员工档案",
+  };
 
   function initAIHRDeskShell() {
     document.body.classList.add("aihr-desk");
@@ -36,6 +50,7 @@
     document.body.classList.add("aihr-desk");
     injectBrandLabel();
     filterWorkspaceSidebar();
+    translateVisibleLabels();
   }
 
   function injectBrandLabel() {
@@ -80,6 +95,18 @@
           title.textContent = "AIHR 工作台";
         }
       });
+    });
+  }
+
+  function translateVisibleLabels() {
+    document.querySelectorAll("a, span, div, button").forEach((node) => {
+      if (!node.children.length && node.textContent) {
+        const text = node.textContent.trim();
+        const translated = AIHR_VISIBLE_LABELS[text];
+        if (translated && text !== translated) {
+          node.textContent = translated;
+        }
+      }
     });
   }
 

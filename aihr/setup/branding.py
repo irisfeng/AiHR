@@ -5,6 +5,7 @@ from aihr.setup.workspace import AIHR_WORKSPACE_LABELS, AIHR_WORKSPACE_NAMES, WO
 AIHR_APP_NAME = "AIHR"
 AIHR_APP_SLUG = "aihr"
 AIHR_LOGO_PATH = "/assets/aihr/images/aihr-logo.svg"
+AIHR_DEFAULT_LANGUAGE = "zh"
 AIHR_PUBLIC_BRAND_HTML = (
     '<span class="aihr-web-brand" '
     'style="display:inline-flex;align-items:center;gap:10px;font-weight:700;color:#0f172a;">'
@@ -38,6 +39,7 @@ STANDARD_WORKSPACES_TO_REPLACE = {
 }
 
 STANDARD_APPS_TO_REPLACE = {"", "frappe", "erpnext", "hrms"}
+STANDARD_LANGUAGES_TO_REPLACE = {"", "en"}
 
 
 def ensure_aihr_branding() -> None:
@@ -67,11 +69,18 @@ def should_reset_default_app(default_app: str | None) -> bool:
     return normalized in STANDARD_APPS_TO_REPLACE or not normalized
 
 
+def should_reset_language(language: str | None) -> bool:
+    normalized = (language or "").strip().lower()
+    return normalized in STANDARD_LANGUAGES_TO_REPLACE or not normalized
+
+
 def _ensure_system_settings() -> None:
     import frappe
 
     _set_single_value("System Settings", "app_name", AIHR_APP_NAME)
     _set_single_value("System Settings", "default_app", AIHR_APP_SLUG)
+    if should_reset_language(frappe.db.get_single_value("System Settings", "language")):
+        _set_single_value("System Settings", "language", AIHR_DEFAULT_LANGUAGE)
 
 
 def _ensure_website_settings() -> None:
@@ -107,7 +116,7 @@ def _ensure_user_defaults() -> None:
     users = frappe.get_all(
         "User",
         filters={"enabled": 1, "user_type": "System User"},
-        fields=["name", "default_workspace", "default_app"],
+        fields=["name", "default_workspace", "default_app", "language"],
     )
     for user in users:
         updates: dict[str, str] = {}
@@ -115,6 +124,8 @@ def _ensure_user_defaults() -> None:
             updates["default_workspace"] = WORKSPACE_NAME
         if should_reset_default_app(user.get("default_app")):
             updates["default_app"] = AIHR_APP_SLUG
+        if should_reset_language(user.get("language")):
+            updates["language"] = AIHR_DEFAULT_LANGUAGE
         if updates:
             frappe.db.set_value("User", user.get("name"), updates, update_modified=False)
 
