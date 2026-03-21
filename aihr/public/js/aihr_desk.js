@@ -10,6 +10,17 @@
     "/app/aihr-用人经理中心": "/app/aihr-manager-review",
     "/app/aihr-面试协同中心": "/app/aihr-interview-desk",
   };
+  const AIHR_ROUTE_STRING_REDIRECTS = {
+    "Workspaces/AIHR 招聘作战台": "Workspaces/AIHR 招聘总览",
+    "Workspaces/AIHR 用人经理台": "Workspaces/AIHR 用人经理中心",
+    "Workspaces/AIHR 面试官台": "Workspaces/AIHR 面试协同中心",
+  };
+  const AIHR_WORKSPACE_HISTORY_REDIRECTS = {
+    "AIHR 招聘作战台": "AIHR 招聘总览",
+    "AIHR 用人经理台": "AIHR 用人经理中心",
+    "AIHR 面试官台": "AIHR 面试协同中心",
+  };
+  const AIHR_BLOCKED_HISTORY_ROUTES = new Set(["Workspaces/HR"]);
   const AIHR_VISIBLE_LABELS = {
     "AIHR 招聘作战台": "AIHR 招聘总览",
     "AIHR 用人经理台": "AIHR 用人经理中心",
@@ -77,6 +88,8 @@
     "Requested By": "需求提出人",
     "Expected By": "期望到岗日期",
     "Open & Approved": "已审批开放",
+    Workspace: "工作台",
+    Workspaces: "工作台",
     Pending: "待处理",
     "On Hold": "已搁置",
     Filled: "已招满",
@@ -86,6 +99,7 @@
 
   function initAIHRDeskShell() {
     document.body.classList.add("aihr-desk");
+    sanitizeSearchHistory();
     redirectWorkspaceAliasRoute();
     enhanceDeskShell();
 
@@ -113,6 +127,7 @@
 
   function enhanceDeskShell() {
     document.body.classList.add("aihr-desk");
+    sanitizeSearchHistory();
     redirectWorkspaceAliasRoute();
     injectBrandLabel();
     filterWorkspaceSidebar();
@@ -125,6 +140,70 @@
     if (target && window.location.pathname !== target) {
       window.location.replace(target);
     }
+  }
+
+  function sanitizeSearchHistory() {
+    if (!window.frappe) {
+      return;
+    }
+
+    if (Array.isArray(frappe.route_history)) {
+      frappe.route_history = dedupeBy(
+        frappe.route_history.map(normalizeRouteArray).filter(Boolean),
+        (item) => JSON.stringify(item)
+      );
+    }
+
+    if (frappe.boot && Array.isArray(frappe.boot.frequently_visited_links)) {
+      frappe.boot.frequently_visited_links = dedupeBy(
+        frappe.boot.frequently_visited_links
+          .map((link) => normalizeFrequentLink(link))
+          .filter(Boolean),
+        (item) => item.route
+      );
+    }
+  }
+
+  function normalizeRouteArray(route) {
+    if (!Array.isArray(route) || !route.length) {
+      return route;
+    }
+
+    if (route[0] === "Workspaces" && route[1]) {
+      const label = AIHR_WORKSPACE_HISTORY_REDIRECTS[route[1]] || route[1];
+      return ["Workspaces", label, ...route.slice(2)];
+    }
+
+    return route;
+  }
+
+  function normalizeFrequentLink(link) {
+    if (!link || !link.route) {
+      return null;
+    }
+
+    const route = AIHR_ROUTE_STRING_REDIRECTS[link.route] || link.route;
+    if (!route || shouldHideFrequentRoute(route)) {
+      return null;
+    }
+
+    return { ...link, route };
+  }
+
+  function shouldHideFrequentRoute(route) {
+    return AIHR_BLOCKED_HISTORY_ROUTES.has(route) || route.startsWith("Workspaces/");
+  }
+
+  function dedupeBy(items, selector) {
+    const seen = new Set();
+    return items.filter((item) => {
+      const key = selector(item);
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
   }
 
   function injectBrandLabel() {

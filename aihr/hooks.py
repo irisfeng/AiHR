@@ -25,6 +25,7 @@ add_to_apps_screen = [
 
 after_install = "aihr.install.after_install"
 after_migrate = "aihr.install.after_migrate"
+extend_bootinfo = ["aihr.setup.navigation.extend_bootinfo"]
 
 doc_events = {
     "Job Requisition": {
