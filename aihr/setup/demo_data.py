@@ -5,7 +5,7 @@ from typing import Any
 import frappe
 from frappe.utils import add_to_date, get_datetime, now_datetime
 
-from aihr.services.recruitment_ops import build_interviewer_pack
+from aihr.services.recruitment_ops import build_interviewer_pack, default_onboarding_activities
 from aihr.services.resume_parser import parse_resume_text
 from aihr.services.screening import build_agency_brief, screen_candidate
 
@@ -37,7 +37,9 @@ def seed_demo_recruitment_data(company: str) -> dict[str, str]:
 
     interview_round = _ensure_interview_round(designation.name)
     interview = _get_or_create_interview(job_opening, applicant_docs[0], interview_round, requester.user_id)
+    interview_feedback = _get_or_create_interview_feedback(interview, requester.user_id)
     job_offer = _get_or_create_job_offer(company_doc.name, designation.name, applicant_docs[-1], job_opening, requester.user_id)
+    employee_onboarding = _get_or_create_employee_onboarding(job_offer, applicant_docs[-1], job_opening, requester.user_id)
 
     return {
         "company": company_doc.name,
@@ -45,7 +47,9 @@ def seed_demo_recruitment_data(company: str) -> dict[str, str]:
         "job_opening": job_opening.name,
         "job_applicants": ", ".join(applicant.name for applicant in applicant_docs),
         "interview": interview.name,
+        "interview_feedback": interview_feedback.name,
         "job_offer": job_offer.name,
+        "employee_onboarding": employee_onboarding.name,
     }
 
 
@@ -318,7 +322,33 @@ def _ensure_skill(skill_name: str, description: str):
 def _get_or_create_interview(job_opening, applicant, interview_round, follow_up_owner: str):
     existing = frappe.db.exists("Interview", {"job_applicant": applicant.name, "interview_round": interview_round.name})
     if existing:
-        return frappe.get_doc("Interview", existing)
+        doc = frappe.get_doc("Interview", existing)
+        today = now_datetime().date()
+        if str(getattr(doc, "scheduled_on", "")) != str(today):
+            doc.db_set("scheduled_on", today, update_modified=False)
+        if str(getattr(doc, "from_time", "")) != "14:00:00":
+            doc.db_set("from_time", "14:00:00", update_modified=False)
+        if str(getattr(doc, "to_time", "")) != "15:00:00":
+            doc.db_set("to_time", "15:00:00", update_modified=False)
+        updates_needed = False
+        if not getattr(doc, "aihr_interview_mode", None):
+            doc.aihr_interview_mode = "Video"
+            updates_needed = True
+        if not getattr(doc, "aihr_follow_up_owner", None):
+            doc.aihr_follow_up_owner = follow_up_owner
+            updates_needed = True
+        feedback_due_at = get_datetime(f"{add_to_date(today, days=1)} 12:00:00")
+        if not getattr(doc, "aihr_feedback_due_at", None) or str(doc.aihr_feedback_due_at) != str(feedback_due_at):
+            doc.aihr_feedback_due_at = feedback_due_at
+            updates_needed = True
+        if not getattr(doc, "interview_details", None):
+            doc.append("interview_details", {"interviewer": follow_up_owner})
+            updates_needed = True
+        if updates_needed:
+            doc.save(ignore_permissions=True)
+        else:
+            doc.reload()
+        return doc
 
     screening_name = frappe.db.get_value("AI Screening", {"job_applicant": applicant.name}, "name")
     screening = frappe.get_doc("AI Screening", screening_name) if screening_name else None
@@ -326,7 +356,7 @@ def _get_or_create_interview(job_opening, applicant, interview_round, follow_up_
     doc = frappe.new_doc("Interview")
     doc.job_applicant = applicant.name
     doc.interview_round = interview_round.name
-    doc.scheduled_on = add_to_date(now_datetime().date(), days=1)
+    doc.scheduled_on = now_datetime().date()
     doc.from_time = "14:00:00"
     doc.to_time = "15:00:00"
     doc.status = "Under Review"
@@ -349,17 +379,59 @@ def _get_or_create_interview(job_opening, applicant, interview_round, follow_up_
     return doc
 
 
+def _get_or_create_interview_feedback(interview, interviewer: str):
+    existing = frappe.db.exists("Interview Feedback", {"interview": interview.name, "interviewer": interviewer})
+    if existing:
+        doc = frappe.get_doc("Interview Feedback", existing)
+        if doc.docstatus == 0:
+            try:
+                doc.submit()
+                doc.reload()
+            except Exception:
+                pass
+        return doc
+
+    doc = frappe.new_doc("Interview Feedback")
+    doc.interview = interview.name
+    doc.interviewer = interviewer
+    doc.result = "Cleared"
+    doc.feedback = "候选人在招聘协同、入职推进和业务沟通上表现稳定，建议进入 Offer 评估。"
+    for skill_name, rating in (
+        ("招聘协同", 4),
+        ("入职推进", 4),
+        ("业务沟通", 5),
+    ):
+        doc.append("skill_assessment", {"skill": skill_name, "rating": rating})
+    doc.aihr_hiring_recommendation = "Yes"
+    doc.aihr_next_step_suggestion = "同步面试结论并推进 Offer 评估"
+    doc.insert(ignore_permissions=True)
+    try:
+        doc.submit()
+    except Exception:
+        pass
+    return doc
+
+
 def _get_or_create_job_offer(company: str, designation: str, applicant, job_opening, onboarding_owner: str):
     existing = frappe.db.exists("Job Offer", {"job_applicant": applicant.name})
     if existing:
-        return frappe.get_doc("Job Offer", existing)
+        doc = frappe.get_doc("Job Offer", existing)
+        doc.status = "Accepted"
+        doc.aihr_onboarding_owner = onboarding_owner
+        doc.aihr_payroll_handoff_status = "Ready"
+        doc.aihr_compensation_notes = (
+            f"{applicant.applicant_name} 当前岗位匹配度较高，建议按 {job_opening.currency} "
+            f"{int(job_opening.lower_range)} - {int(job_opening.upper_range)} 范围沟通最终薪酬。"
+        )
+        doc.save(ignore_permissions=True)
+        return doc
 
     doc = frappe.new_doc("Job Offer")
     doc.job_applicant = applicant.name
     doc.offer_date = now_datetime().date()
     doc.designation = designation
     doc.company = company
-    doc.status = "Awaiting Response"
+    doc.status = "Accepted"
     doc.terms = (
         "<p>预计到岗时间 2 周内，试用期 3 个月，薪资结构以正式 Offer 为准。</p>"
         "<p>请同步确认身份证明、学历材料、入职日期和薪酬建档负责人。</p>"
@@ -370,6 +442,46 @@ def _get_or_create_job_offer(company: str, designation: str, applicant, job_open
         f"{applicant.applicant_name} 当前岗位匹配度较高，建议按 {job_opening.currency} "
         f"{int(job_opening.lower_range)} - {int(job_opening.upper_range)} 范围沟通最终薪酬。"
     )
+    doc.save(ignore_permissions=True)
+    return doc
+
+
+def _get_or_create_employee_onboarding(job_offer, applicant, job_opening, handoff_owner: str):
+    existing = frappe.db.exists("Employee Onboarding", {"job_offer": job_offer.name})
+    if existing:
+        doc = frappe.get_doc("Employee Onboarding", existing)
+        if not getattr(doc, "activities", None):
+            for activity in default_onboarding_activities(handoff_owner):
+                doc.append("activities", activity)
+        doc.aihr_handoff_owner = handoff_owner
+        doc.aihr_payroll_ready = 1
+        doc.aihr_preboarding_notes = (
+            f"{applicant.applicant_name} 的 Offer 已接受，已进入入职交接阶段。"
+            " 请核对资料、设备和首月薪酬建档信息。"
+        )
+        doc.boarding_status = "In Process"
+        doc.save(ignore_permissions=True)
+        return doc
+
+    doc = frappe.new_doc("Employee Onboarding")
+    doc.job_applicant = applicant.name
+    doc.job_offer = job_offer.name
+    doc.company = job_offer.company
+    doc.employee_name = applicant.applicant_name
+    doc.department = job_opening.department
+    doc.designation = job_offer.designation
+    doc.date_of_joining = add_to_date(now_datetime().date(), days=14)
+    doc.boarding_begins_on = add_to_date(doc.date_of_joining, days=-7)
+    doc.boarding_status = "In Process"
+    doc.notify_users_by_email = 0
+    doc.aihr_handoff_owner = handoff_owner
+    doc.aihr_payroll_ready = 1
+    doc.aihr_preboarding_notes = (
+        f"{applicant.applicant_name} 的 Offer 已接受，已进入入职交接阶段。"
+        " 请核对资料、设备和首月薪酬建档信息。"
+    )
+    for activity in default_onboarding_activities(handoff_owner):
+        doc.append("activities", activity)
     doc.save(ignore_permissions=True)
     return doc
 

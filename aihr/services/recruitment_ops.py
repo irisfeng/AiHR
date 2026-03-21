@@ -130,6 +130,113 @@ def get_offer_next_action(status: str, payroll_handoff_status: str) -> str:
     return "跟进候选人反馈并确认到岗时间"
 
 
+def get_feedback_next_action(result: str) -> str:
+    mapping = {
+        "Cleared": "同步面试结论并推进 Offer 评估",
+        "Rejected": "同步淘汰结论并归档面试反馈",
+    }
+    return mapping.get(result, "补充面试反馈后确认下一步")
+
+
+def build_feedback_summary(
+    *,
+    interviewer: str,
+    result: str,
+    average_rating: str,
+    feedback: str,
+    ratings: Iterable[str] | None = None,
+) -> str:
+    return "\n".join(
+        [
+            "AIHR 面试反馈摘要",
+            f"面试官：{interviewer or '待补充'}",
+            f"面试结论：{result or '待确认'}",
+            f"平均评分：{average_rating or '待补充'}",
+            "",
+            "技能评分：",
+            *_bullet_lines(ratings, empty_text="待补充"),
+            "",
+            "反馈结论：",
+            feedback or "待补充面试官反馈。",
+        ]
+    ).strip()
+
+
+def default_onboarding_activities(owner: str) -> list[dict[str, Any]]:
+    return [
+        {
+            "activity_name": "确认 Offer 与入职日期",
+            "user": owner,
+            "begin_on": 0,
+            "duration": 1,
+            "required_for_employee_creation": 1,
+            "description": "确认候选人接受 Offer、到岗日期与联系方式。",
+        },
+        {
+            "activity_name": "准备入职资料清单",
+            "user": owner,
+            "begin_on": 0,
+            "duration": 2,
+            "required_for_employee_creation": 1,
+            "description": "核对身份证明、学历材料、银行卡与紧急联系人信息。",
+        },
+        {
+            "activity_name": "同步薪酬建档信息",
+            "user": owner,
+            "begin_on": 1,
+            "duration": 1,
+            "required_for_employee_creation": 1,
+            "description": "确认薪资结构、试用期、补贴项并同步给薪酬负责人。",
+        },
+        {
+            "activity_name": "准备入职首日安排",
+            "user": owner,
+            "begin_on": 2,
+            "duration": 1,
+            "required_for_employee_creation": 0,
+            "description": "确认座位、设备、邮箱账号和直属经理对接安排。",
+        },
+    ]
+
+
+def build_onboarding_summary(
+    *,
+    candidate_name: str,
+    opening_title: str,
+    handoff_owner: str,
+    boarding_status: str,
+    payroll_ready: bool,
+    date_of_joining: str,
+    activities: Iterable[str] | None = None,
+    preboarding_notes: str = "",
+) -> str:
+    return "\n".join(
+        [
+            "AIHR 入职交接摘要",
+            f"候选人：{candidate_name or '待补充'}",
+            f"岗位：{opening_title or '待补充'}",
+            f"交接负责人：{handoff_owner or '待分配'}",
+            f"当前状态：{boarding_status or 'Pending'}",
+            f"预计入职日期：{date_of_joining or '待确认'}",
+            f"薪酬建档是否就绪：{'是' if payroll_ready else '否'}",
+            "",
+            "关键活动：",
+            *_bullet_lines(activities, empty_text="待生成"),
+            "",
+            "预入职说明：",
+            preboarding_notes or "待补充入职资料、设备和薪酬交接说明。",
+        ]
+    ).strip()
+
+
+def get_onboarding_next_action(boarding_status: str, payroll_ready: bool) -> str:
+    if boarding_status == "Completed":
+        return "确认员工档案与首月薪资信息"
+    if payroll_ready:
+        return "推进入职活动并创建员工档案"
+    return "先补齐预入职资料和薪酬建档信息"
+
+
 def _bullet_lines(items: Iterable[str] | None, *, empty_text: str) -> list[str]:
     normalized = [str(item).strip() for item in (items or []) if str(item).strip()]
     if not normalized:

@@ -30,6 +30,21 @@ frappe.ui.form.on("Job Offer", {
       frappe.show_alert({ message: "薪酬交接状态已更新", indicator: "green" });
     });
 
+    if (frm.doc.status === "Accepted") {
+      frm.add_custom_button("创建入职交接", async () => {
+        const response = await frappe.call({
+          method: "aihr.api.recruitment.create_employee_onboarding_from_offer",
+          args: { job_offer: frm.doc.name, save: 1 },
+          freeze: true,
+          freeze_message: "正在创建入职交接...",
+        });
+        const result = response.message || {};
+        if (result.route) {
+          frappe.set_route("Form", "Employee Onboarding", result.employee_onboarding);
+        }
+      });
+    }
+
     if (frm.doc.job_applicant) {
       frm.add_custom_button("查看候选人摘要", () => {
         frappe.set_route("Form", "Job Applicant", frm.doc.job_applicant);

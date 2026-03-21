@@ -1,11 +1,16 @@
 import unittest
 
 from aihr.services.recruitment_ops import (
+    build_feedback_summary,
     build_requisition_payload,
     build_interviewer_pack,
+    build_onboarding_summary,
     build_offer_handoff_notes,
+    default_onboarding_activities,
     generate_requisition_agency_brief,
+    get_feedback_next_action,
     get_interview_follow_up_action,
+    get_onboarding_next_action,
     get_offer_next_action,
     get_screening_next_action,
 )
@@ -100,6 +105,51 @@ class RecruitmentOpsTests(unittest.TestCase):
     def test_maps_offer_next_action(self):
         self.assertEqual(get_offer_next_action("Awaiting Response", "Not Started"), "跟进候选人反馈并确认到岗时间")
         self.assertEqual(get_offer_next_action("Accepted", "Ready"), "发起入职任务并通知薪资建档负责人")
+
+    def test_maps_feedback_next_action(self):
+        self.assertEqual(get_feedback_next_action("Cleared"), "同步面试结论并推进 Offer 评估")
+        self.assertEqual(get_feedback_next_action("Rejected"), "同步淘汰结论并归档面试反馈")
+
+    def test_builds_feedback_summary(self):
+        summary = build_feedback_summary(
+            interviewer="manager.demo@aihr.local",
+            result="Cleared",
+            average_rating="4.3 / 5",
+            feedback="候选人沟通顺畅，流程意识强。",
+            ratings=["招聘协同: 4 / 5", "业务沟通: 5 / 5"],
+        )
+
+        self.assertIn("AIHR 面试反馈摘要", summary)
+        self.assertIn("manager.demo@aihr.local", summary)
+        self.assertIn("候选人沟通顺畅", summary)
+
+    def test_builds_default_onboarding_activities(self):
+        activities = default_onboarding_activities("manager.demo@aihr.local")
+
+        self.assertEqual(len(activities), 4)
+        self.assertEqual(activities[0]["activity_name"], "确认 Offer 与入职日期")
+        self.assertEqual(activities[1]["user"], "manager.demo@aihr.local")
+
+    def test_builds_onboarding_summary(self):
+        summary = build_onboarding_summary(
+            candidate_name="Mia Zhang",
+            opening_title="HRBP - AIHR MVP Demo",
+            handoff_owner="manager.demo@aihr.local",
+            boarding_status="In Process",
+            payroll_ready=True,
+            date_of_joining="2026-04-04",
+            activities=["确认 Offer 与入职日期", "同步薪酬建档信息"],
+            preboarding_notes="请确认身份证明、学历材料和银行卡信息。",
+        )
+
+        self.assertIn("AIHR 入职交接摘要", summary)
+        self.assertIn("Mia Zhang", summary)
+        self.assertIn("同步薪酬建档信息", summary)
+
+    def test_maps_onboarding_next_action(self):
+        self.assertEqual(get_onboarding_next_action("Pending", False), "先补齐预入职资料和薪酬建档信息")
+        self.assertEqual(get_onboarding_next_action("In Process", True), "推进入职活动并创建员工档案")
+        self.assertEqual(get_onboarding_next_action("Completed", True), "确认员工档案与首月薪资信息")
 
 
 if __name__ == "__main__":

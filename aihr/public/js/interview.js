@@ -36,6 +36,13 @@ frappe.ui.form.on("Interview", {
       });
     }
 
+    frm.add_custom_button("录入反馈", () => {
+      frappe.new_doc("Interview Feedback", {
+        interview: frm.doc.name,
+        interviewer: frm.doc.aihr_follow_up_owner,
+      });
+    });
+
     if (frm.doc.job_applicant && frm.doc.status === "Cleared") {
       frm.add_custom_button("发起 Offer", async () => {
         const defaults = {

@@ -36,4 +36,11 @@ doc_events = {
     "Job Offer": {
         "validate": "aihr.events.recruitment.sync_job_offer_ops",
     },
+    "Interview Feedback": {
+        "validate": "aihr.events.recruitment.sync_interview_feedback_defaults",
+        "on_submit": "aihr.events.recruitment.apply_interview_feedback_result",
+    },
+    "Employee Onboarding": {
+        "validate": "aihr.events.recruitment.sync_employee_onboarding_defaults",
+    },
 }
