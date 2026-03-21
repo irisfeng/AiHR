@@ -18,6 +18,30 @@ frappe.ui.form.on("Employee Onboarding", {
       frappe.show_alert({ message: "入职清单已同步", indicator: "green" });
     });
 
+    if (!frm.doc.aihr_employee_record && !frm.doc.employee) {
+      frm.add_custom_button("创建员工主档", async () => {
+        const response = await frappe.call({
+          method: "aihr.api.recruitment.create_employee_from_onboarding",
+          args: { employee_onboarding: frm.doc.name, save: 1 },
+          freeze: true,
+          freeze_message: "正在创建员工主档...",
+        });
+        const result = response.message || {};
+        await frm.reload_doc();
+        await renderOnboardingSnapshot(frm);
+        frappe.show_alert({ message: result.created ? "员工主档已创建" : "员工主档已存在", indicator: "green" });
+        if (result.route) {
+          frappe.set_route("Form", "Employee", result.employee);
+        }
+      });
+    }
+
+    if (frm.doc.aihr_employee_record || frm.doc.employee) {
+      frm.add_custom_button("查看员工档案", () => {
+        frappe.set_route("Form", "Employee", frm.doc.aihr_employee_record || frm.doc.employee);
+      });
+    }
+
     if (frm.doc.job_offer) {
       frm.add_custom_button("查看 Offer", () => {
         frappe.set_route("Form", "Job Offer", frm.doc.job_offer);
@@ -74,7 +98,7 @@ async function renderOnboardingSnapshot(frm) {
         ${metricCard("交接状态", statusLabel(onboarding.boarding_status))}
         ${metricCard("负责人", onboarding.handoff_owner || "待分配")}
         ${metricCard("薪酬就绪", onboarding.payroll_ready ? "已就绪" : "待准备")}
-        ${metricCard("活动数", String((data.activities || []).length))}
+        ${metricCard("员工主档", employeeCreationLabel(onboarding.employee_creation_status))}
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
@@ -86,6 +110,10 @@ async function renderOnboardingSnapshot(frm) {
           <div style="border-radius: 16px; padding: 16px; background: #ffffff; border: 1px solid rgba(15,23,42,0.08);">
             <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">预入职说明</div>
             <div style="font-size: 14px; line-height: 1.8;">${escapeHtml(onboarding.preboarding_notes || "待补充。")}</div>
+          </div>
+          <div style="border-radius: 16px; padding: 16px; background: #ffffff; border: 1px solid rgba(15,23,42,0.08);">
+            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">员工主档状态</div>
+            <div style="font-size: 14px; line-height: 1.8;">${escapeHtml(employeeCreationLabel(onboarding.employee_creation_status))} · ${escapeHtml(onboarding.employee_record || "尚未生成员工档案")}</div>
           </div>
         </div>
         <div style="display: grid; gap: 14px;">
@@ -129,6 +157,16 @@ function statusLabel(value) {
     Pending: "待启动",
     "In Process": "进行中",
     Completed: "已完成",
+  };
+
+  return labels[value] || value || "待确认";
+}
+
+function employeeCreationLabel(value) {
+  const labels = {
+    "Not Started": "待创建",
+    Ready: "可创建",
+    Completed: "已创建",
   };
 
   return labels[value] || value || "待确认";

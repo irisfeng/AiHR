@@ -9,13 +9,17 @@ from aihr.services.recruitment_ops import (
     build_feedback_summary,
     build_offer_handoff_notes,
     build_onboarding_summary,
+    build_payroll_handoff_summary,
     default_onboarding_activities,
     generate_requisition_agency_brief,
     get_feedback_next_action,
     get_interview_follow_up_action,
     get_onboarding_next_action,
     get_offer_next_action,
+    get_payroll_handoff_next_action,
     get_screening_next_action,
+    resolve_employee_status,
+    split_person_name,
 )
 from aihr.services.resume_intake import extract_resume_archive, summarize_archive_results
 from aihr.services.resume_parser import extract_text_from_file, parse_resume_text
@@ -653,10 +657,12 @@ def get_job_offer_snapshot(job_offer: str) -> dict[str, Any]:
     applicant = frappe.get_doc("Job Applicant", offer.job_applicant) if getattr(offer, "job_applicant", None) else None
     opening = _get_job_opening_doc(getattr(applicant, "job_title", None))
     screening = _get_latest_screening_doc(applicant.name if applicant else None)
+    onboarding_name = frappe.db.get_value("Employee Onboarding", {"job_offer": offer.name}, "name")
 
     payroll_status = getattr(offer, "aihr_payroll_handoff_status", "") or "Not Started"
     next_action = get_offer_next_action(offer.status, payroll_status)
     salary_expectation = _format_salary_expectation(applicant)
+    opening_salary_range = _format_opening_salary_range(opening)
     handoff_summary = build_offer_handoff_notes(
         candidate_name=getattr(applicant, "applicant_name", "") if applicant else "",
         opening_title=getattr(opening, "job_title", "") if opening else "",
@@ -664,6 +670,15 @@ def get_job_offer_snapshot(job_offer: str) -> dict[str, Any]:
         onboarding_owner=getattr(offer, "aihr_onboarding_owner", ""),
         payroll_handoff_status=payroll_status,
         salary_expectation=salary_expectation,
+        compensation_notes=getattr(offer, "aihr_compensation_notes", ""),
+    )
+    payroll_handoff_summary = getattr(offer, "aihr_payroll_handoff_summary", "") or build_payroll_handoff_summary(
+        candidate_name=getattr(applicant, "applicant_name", "") if applicant else "",
+        opening_title=getattr(opening, "job_title", "") if opening else "",
+        payroll_owner=getattr(offer, "aihr_payroll_owner", ""),
+        payroll_handoff_status=payroll_status,
+        salary_expectation=salary_expectation,
+        opening_salary_range=opening_salary_range,
         compensation_notes=getattr(offer, "aihr_compensation_notes", ""),
     )
 
@@ -675,8 +690,10 @@ def get_job_offer_snapshot(job_offer: str) -> dict[str, Any]:
             "designation": offer.designation,
             "company": offer.company,
             "onboarding_owner": getattr(offer, "aihr_onboarding_owner", ""),
+            "payroll_owner": getattr(offer, "aihr_payroll_owner", ""),
             "payroll_handoff_status": payroll_status,
             "compensation_notes": getattr(offer, "aihr_compensation_notes", ""),
+            "payroll_handoff_summary": payroll_handoff_summary,
             "terms_preview": _truncate_text(_strip_html(offer.terms or ""), 180),
         },
         "job_applicant": {
@@ -706,7 +723,9 @@ def get_job_offer_snapshot(job_offer: str) -> dict[str, Any]:
         "actions": {
             "next_action": next_action,
             "handoff_summary": handoff_summary,
+            "payroll_handoff_summary": payroll_handoff_summary,
             "candidate_route": frappe.utils.get_url_to_form("Job Applicant", applicant.name) if applicant else "",
+            "onboarding_route": frappe.utils.get_url_to_form("Employee Onboarding", onboarding_name) if onboarding_name else "",
         },
     }
 
@@ -722,10 +741,13 @@ def prepare_job_offer_handoff(job_offer: str, save: int = 1) -> dict[str, Any]:
 
     if not getattr(offer, "aihr_onboarding_owner", None):
         offer.aihr_onboarding_owner = _default_owner()
+    if not getattr(offer, "aihr_payroll_owner", None):
+        offer.aihr_payroll_owner = getattr(offer, "aihr_onboarding_owner", None) or _default_owner()
     if not getattr(offer, "aihr_payroll_handoff_status", None):
         offer.aihr_payroll_handoff_status = "Not Started"
     if not getattr(offer, "aihr_compensation_notes", None):
         offer.aihr_compensation_notes = _build_compensation_notes(applicant, opening)
+    offer.aihr_payroll_handoff_summary = _build_payroll_handoff_summary(applicant, opening, offer)
 
     if save:
         offer.save(ignore_permissions=True)
@@ -733,8 +755,10 @@ def prepare_job_offer_handoff(job_offer: str, save: int = 1) -> dict[str, Any]:
     return {
         "job_offer": offer.name,
         "onboarding_owner": getattr(offer, "aihr_onboarding_owner", ""),
+        "payroll_owner": getattr(offer, "aihr_payroll_owner", ""),
         "payroll_handoff_status": getattr(offer, "aihr_payroll_handoff_status", ""),
         "compensation_notes": getattr(offer, "aihr_compensation_notes", ""),
+        "payroll_handoff_summary": getattr(offer, "aihr_payroll_handoff_summary", ""),
     }
 
 
@@ -745,10 +769,22 @@ def mark_job_offer_payroll_ready(job_offer: str, save: int = 1) -> dict[str, Any
 
     offer = frappe.get_doc("Job Offer", job_offer)
     applicant = frappe.get_doc("Job Applicant", offer.job_applicant) if getattr(offer, "job_applicant", None) else None
+    opening = _get_job_opening_doc(getattr(applicant, "job_title", None))
 
     offer.aihr_payroll_handoff_status = "Ready"
     if not getattr(offer, "aihr_onboarding_owner", None):
         offer.aihr_onboarding_owner = _default_owner()
+    if not getattr(offer, "aihr_payroll_owner", None):
+        offer.aihr_payroll_owner = getattr(offer, "aihr_onboarding_owner", None) or _default_owner()
+    offer.aihr_payroll_handoff_summary = _build_payroll_handoff_summary(applicant, opening, offer)
+
+    onboarding_name = frappe.db.get_value("Employee Onboarding", {"job_offer": offer.name}, "name")
+    if onboarding_name:
+        onboarding = frappe.get_doc("Employee Onboarding", onboarding_name)
+        onboarding.aihr_payroll_ready = 1
+        if not getattr(onboarding, "aihr_employee_creation_status", None):
+            onboarding.aihr_employee_creation_status = "Ready"
+        onboarding.save(ignore_permissions=True)
 
     if save:
         offer.save(ignore_permissions=True)
@@ -757,6 +793,45 @@ def mark_job_offer_payroll_ready(job_offer: str, save: int = 1) -> dict[str, Any
         "job_offer": offer.name,
         "payroll_handoff_status": offer.aihr_payroll_handoff_status,
         "next_action": get_offer_next_action(offer.status, offer.aihr_payroll_handoff_status),
+    }
+
+
+@whitelist()
+def complete_job_offer_payroll_handoff(job_offer: str, save: int = 1) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for completing Job Offer payroll handoff.")
+
+    offer = frappe.get_doc("Job Offer", job_offer)
+    applicant = frappe.get_doc("Job Applicant", offer.job_applicant) if getattr(offer, "job_applicant", None) else None
+    opening = _get_job_opening_doc(getattr(applicant, "job_title", None))
+
+    if not getattr(offer, "aihr_onboarding_owner", None):
+        offer.aihr_onboarding_owner = _default_owner()
+    if not getattr(offer, "aihr_payroll_owner", None):
+        offer.aihr_payroll_owner = getattr(offer, "aihr_onboarding_owner", None) or _default_owner()
+    if not getattr(offer, "aihr_compensation_notes", None):
+        offer.aihr_compensation_notes = _build_compensation_notes(applicant, opening)
+    offer.aihr_payroll_handoff_status = "Completed"
+    offer.aihr_payroll_handoff_summary = _build_payroll_handoff_summary(applicant, opening, offer)
+
+    onboarding_name = frappe.db.get_value("Employee Onboarding", {"job_offer": offer.name}, "name")
+    if onboarding_name:
+        onboarding = frappe.get_doc("Employee Onboarding", onboarding_name)
+        onboarding.aihr_payroll_ready = 1
+        if getattr(onboarding, "aihr_employee_record", None):
+            onboarding.aihr_employee_creation_status = "Completed"
+        else:
+            onboarding.aihr_employee_creation_status = "Ready"
+        onboarding.save(ignore_permissions=True)
+
+    if save:
+        offer.save(ignore_permissions=True)
+
+    return {
+        "job_offer": offer.name,
+        "payroll_handoff_status": offer.aihr_payroll_handoff_status,
+        "payroll_handoff_summary": offer.aihr_payroll_handoff_summary,
+        "next_action": get_payroll_handoff_next_action(offer.aihr_payroll_handoff_status),
     }
 
 
@@ -926,6 +1001,7 @@ def create_employee_onboarding_from_offer(job_offer: str, save: int = 1) -> dict
     onboarding.boarding_begins_on = _default_boarding_begins_on(onboarding.date_of_joining)
     onboarding.notify_users_by_email = 0
     onboarding.aihr_handoff_owner = owner
+    onboarding.aihr_employee_creation_status = "Ready" if getattr(offer, "aihr_payroll_handoff_status", "") in {"Ready", "Completed"} else "Not Started"
     onboarding.aihr_payroll_ready = 1 if getattr(offer, "aihr_payroll_handoff_status", "") in {"Ready", "Completed"} else 0
     onboarding.aihr_preboarding_notes = _build_preboarding_notes(applicant, offer, opening)
     for activity in default_onboarding_activities(owner):
@@ -970,6 +1046,8 @@ def get_employee_onboarding_snapshot(employee_onboarding: str) -> dict[str, Any]
             "date_of_joining": onboarding.date_of_joining,
             "boarding_begins_on": onboarding.boarding_begins_on,
             "handoff_owner": getattr(onboarding, "aihr_handoff_owner", ""),
+            "employee_record": getattr(onboarding, "aihr_employee_record", "") or getattr(onboarding, "employee", ""),
+            "employee_creation_status": getattr(onboarding, "aihr_employee_creation_status", ""),
             "payroll_ready": bool(getattr(onboarding, "aihr_payroll_ready", 0)),
             "preboarding_notes": getattr(onboarding, "aihr_preboarding_notes", ""),
         },
@@ -998,6 +1076,7 @@ def get_employee_onboarding_snapshot(employee_onboarding: str) -> dict[str, Any]
             "next_action": get_onboarding_next_action(onboarding.boarding_status, bool(getattr(onboarding, "aihr_payroll_ready", 0))),
             "offer_route": frappe.utils.get_url_to_form("Job Offer", offer.name) if offer else "",
             "candidate_route": frappe.utils.get_url_to_form("Job Applicant", applicant.name) if applicant else "",
+            "employee_route": frappe.utils.get_url_to_form("Employee", onboarding.employee) if getattr(onboarding, "employee", None) else "",
         },
     }
 
@@ -1019,8 +1098,16 @@ def prepare_employee_onboarding(employee_onboarding: str, save: int = 1) -> dict
     if not getattr(onboarding, "activities", None):
         for activity in default_onboarding_activities(onboarding.aihr_handoff_owner or _default_owner()):
             onboarding.append("activities", activity)
+    if not getattr(onboarding, "aihr_employee_record", None) and getattr(onboarding, "employee", None):
+        onboarding.aihr_employee_record = onboarding.employee
     if not getattr(onboarding, "aihr_payroll_ready", None) and offer:
         onboarding.aihr_payroll_ready = 1 if getattr(offer, "aihr_payroll_handoff_status", "") in {"Ready", "Completed"} else 0
+    if getattr(onboarding, "aihr_employee_record", None):
+        onboarding.aihr_employee_creation_status = "Completed"
+    elif bool(getattr(onboarding, "aihr_payroll_ready", 0)):
+        onboarding.aihr_employee_creation_status = "Ready"
+    elif not getattr(onboarding, "aihr_employee_creation_status", None):
+        onboarding.aihr_employee_creation_status = "Not Started"
 
     if save:
         onboarding.save(ignore_permissions=True)
@@ -1028,8 +1115,68 @@ def prepare_employee_onboarding(employee_onboarding: str, save: int = 1) -> dict
     return {
         "employee_onboarding": onboarding.name,
         "handoff_owner": getattr(onboarding, "aihr_handoff_owner", ""),
+        "employee_creation_status": getattr(onboarding, "aihr_employee_creation_status", ""),
+        "employee_record": getattr(onboarding, "aihr_employee_record", ""),
         "payroll_ready": bool(getattr(onboarding, "aihr_payroll_ready", 0)),
         "activity_count": len(getattr(onboarding, "activities", [])),
+    }
+
+
+@whitelist()
+def create_employee_from_onboarding(employee_onboarding: str, save: int = 1) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for creating Employee records.")
+
+    onboarding = frappe.get_doc("Employee Onboarding", employee_onboarding)
+    applicant = frappe.get_doc("Job Applicant", onboarding.job_applicant) if getattr(onboarding, "job_applicant", None) else None
+    offer = frappe.get_doc("Job Offer", onboarding.job_offer) if getattr(onboarding, "job_offer", None) else None
+
+    existing_employee = getattr(onboarding, "aihr_employee_record", None) or getattr(onboarding, "employee", None)
+    if existing_employee and frappe.db.exists("Employee", existing_employee):
+        return {
+            "employee": existing_employee,
+            "created": False,
+            "route": frappe.utils.get_url_to_form("Employee", existing_employee),
+        }
+
+    matched_employee = _find_existing_employee_for_onboarding(applicant, onboarding)
+    if matched_employee:
+        onboarding.aihr_employee_record = matched_employee
+        onboarding.employee = matched_employee
+        onboarding.aihr_employee_creation_status = "Completed"
+        if save:
+            onboarding.save(ignore_permissions=True)
+        return {
+            "employee": matched_employee,
+            "created": False,
+            "route": frappe.utils.get_url_to_form("Employee", matched_employee),
+        }
+
+    payload = _build_employee_payload(applicant, offer, onboarding)
+    employee = frappe.get_doc({"doctype": "Employee", **payload})
+    if save:
+        employee.insert(ignore_permissions=True)
+
+    onboarding = frappe.get_doc("Employee Onboarding", employee_onboarding)
+    onboarding.employee = employee.name
+    onboarding.aihr_employee_record = employee.name
+    onboarding.aihr_employee_creation_status = "Completed"
+    if onboarding.boarding_status == "Pending":
+        onboarding.boarding_status = "In Process"
+    if save:
+        onboarding.save(ignore_permissions=True)
+
+    if applicant:
+        applicant = frappe.get_doc("Job Applicant", applicant.name)
+        applicant.aihr_ai_status = "Hired"
+        applicant.aihr_next_action = "确认员工档案与首月薪资信息"
+        applicant.aihr_last_contact_at = frappe.utils.now_datetime()
+        applicant.save(ignore_permissions=True)
+
+    return {
+        "employee": employee.name,
+        "created": True,
+        "route": frappe.utils.get_url_to_form("Employee", employee.name),
     }
 
 
@@ -1303,6 +1450,86 @@ def _build_preboarding_notes(applicant, offer, opening) -> str:
         f"{candidate_name} 的岗位为 {job_title or '待补充'}。"
         f" {compensation or '请确认入职资料、设备准备和薪酬建档信息。'}"
     ).strip()
+
+
+def _build_payroll_handoff_summary(applicant, opening, offer) -> str:
+    return build_payroll_handoff_summary(
+        candidate_name=getattr(applicant, "applicant_name", "") if applicant else "",
+        opening_title=getattr(opening, "job_title", "") if opening else getattr(offer, "designation", ""),
+        payroll_owner=getattr(offer, "aihr_payroll_owner", ""),
+        payroll_handoff_status=getattr(offer, "aihr_payroll_handoff_status", "") or "Not Started",
+        salary_expectation=_format_salary_expectation(applicant),
+        opening_salary_range=_format_opening_salary_range(opening),
+        compensation_notes=getattr(offer, "aihr_compensation_notes", ""),
+    )
+
+
+def _build_employee_payload(applicant, offer, onboarding) -> dict[str, Any]:
+    employee_name = (
+        getattr(onboarding, "employee_name", None)
+        or getattr(applicant, "applicant_name", None)
+        or "AIHR Employee"
+    )
+    first_name, middle_name, last_name = split_person_name(employee_name)
+    email_id = getattr(applicant, "email_id", "") if applicant else ""
+    joining_date = getattr(onboarding, "date_of_joining", None)
+    gender_name = _get_default_gender_name()
+    date_of_birth = _default_employee_birth_date()
+    payload = {
+        "naming_series": "HR-EMP-",
+        "first_name": first_name,
+        "middle_name": middle_name,
+        "last_name": last_name,
+        "company": getattr(onboarding, "company", None) or getattr(offer, "company", ""),
+        "department": getattr(onboarding, "department", ""),
+        "designation": getattr(onboarding, "designation", "") or getattr(offer, "designation", ""),
+        "date_of_joining": joining_date,
+        "status": resolve_employee_status(joining_date),
+        "gender": gender_name,
+        "date_of_birth": date_of_birth,
+        "personal_email": email_id or None,
+        "company_email": email_id or None,
+        "prefered_contact_email": "Personal Email" if email_id else "",
+    }
+    if email_id and frappe.db.exists("User", email_id):
+        payload["user_id"] = email_id
+    return payload
+
+
+def _find_existing_employee_for_onboarding(applicant, onboarding) -> str | None:
+    email_id = getattr(applicant, "email_id", "") if applicant else ""
+    if email_id:
+        for fieldname in ("personal_email", "company_email", "user_id"):
+            employee_name = frappe.db.get_value("Employee", {fieldname: email_id}, "name")
+            if employee_name:
+                return employee_name
+
+    employee_name = getattr(onboarding, "employee_name", "") or getattr(applicant, "applicant_name", "")
+    if employee_name and getattr(onboarding, "company", None):
+        return frappe.db.get_value(
+            "Employee",
+            {"employee_name": employee_name, "company": onboarding.company},
+            "name",
+        )
+
+    return None
+
+
+def _get_default_gender_name() -> str:
+    preferred_names = ("Not Specified", "Prefer not to say", "Unknown", "Female", "Male")
+    for name in preferred_names:
+        if frappe.db.exists("Gender", name):
+            return name
+    gender_name = frappe.db.get_value("Gender", {}, "name")
+    if gender_name:
+        return gender_name
+    gender = frappe.get_doc({"doctype": "Gender", "gender": "Not Specified"})
+    gender.insert(ignore_permissions=True)
+    return gender.name
+
+
+def _default_employee_birth_date() -> str:
+    return "1990-01-01"
 
 
 def _get_job_requirements(applicant) -> str:

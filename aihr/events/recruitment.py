@@ -84,6 +84,8 @@ def sync_job_offer_ops(doc, method=None) -> None:
 
     if not getattr(doc, "aihr_onboarding_owner", None):
         doc.aihr_onboarding_owner = _default_owner(doc)
+    if not getattr(doc, "aihr_payroll_owner", None):
+        doc.aihr_payroll_owner = getattr(doc, "aihr_onboarding_owner", None) or _default_owner(doc)
     if not getattr(doc, "aihr_payroll_handoff_status", None):
         doc.aihr_payroll_handoff_status = "Not Started"
 
@@ -147,6 +149,8 @@ def sync_employee_onboarding_defaults(doc, method=None) -> None:
 
     if not getattr(doc, "aihr_handoff_owner", None):
         doc.aihr_handoff_owner = getattr(offer, "aihr_onboarding_owner", None) or _default_owner(doc)
+    if not getattr(doc, "aihr_employee_record", None) and getattr(doc, "employee", None):
+        doc.aihr_employee_record = doc.employee
     if not getattr(doc, "aihr_preboarding_notes", None):
         doc.aihr_preboarding_notes = (
             f"{getattr(applicant, 'applicant_name', '候选人')} 的 Offer 已进入入职交接阶段。"
@@ -157,6 +161,12 @@ def sync_employee_onboarding_defaults(doc, method=None) -> None:
             doc.append("activities", activity)
     if not getattr(doc, "aihr_payroll_ready", None):
         doc.aihr_payroll_ready = 1 if getattr(offer, "aihr_payroll_handoff_status", "") in {"Ready", "Completed"} else 0
+    if getattr(doc, "aihr_employee_record", None):
+        doc.aihr_employee_creation_status = "Completed"
+    elif getattr(doc, "aihr_payroll_ready", None):
+        doc.aihr_employee_creation_status = "Ready"
+    elif not getattr(doc, "aihr_employee_creation_status", None):
+        doc.aihr_employee_creation_status = "Not Started"
 
     if applicant:
         applicant.aihr_next_action = get_onboarding_next_action(doc.boarding_status, bool(getattr(doc, "aihr_payroll_ready", 0)))

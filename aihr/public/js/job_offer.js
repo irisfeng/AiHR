@@ -30,6 +30,20 @@ frappe.ui.form.on("Job Offer", {
       frappe.show_alert({ message: "薪酬交接状态已更新", indicator: "green" });
     });
 
+    if (frm.doc.aihr_payroll_handoff_status !== "Completed") {
+      frm.add_custom_button("完成薪酬建档交接", async () => {
+        await frappe.call({
+          method: "aihr.api.recruitment.complete_job_offer_payroll_handoff",
+          args: { job_offer: frm.doc.name, save: 1 },
+          freeze: true,
+          freeze_message: "正在完成薪酬建档交接...",
+        });
+        await frm.reload_doc();
+        await renderOfferSnapshot(frm);
+        frappe.show_alert({ message: "薪酬建档交接已完成", indicator: "green" });
+      });
+    }
+
     if (frm.doc.status === "Accepted") {
       frm.add_custom_button("创建入职交接", async () => {
         const response = await frappe.call({
@@ -97,6 +111,7 @@ async function renderOfferSnapshot(frm) {
         ${chip(statusLabel(offer.status), "#fff7ed", "#c2410c")}
         ${chip(payrollLabel(offer.payroll_handoff_status), "#eff6ff", "#1d4ed8")}
         ${chip(offer.onboarding_owner || "待分配入职负责人", "#ecfdf5", "#047857")}
+        ${chip(offer.payroll_owner || "待分配薪酬负责人", "#f5f3ff", "#6d28d9")}
         ${chip(offer.offer_date || "Offer 日期待补充", "#f8fafc", "#475569")}
       </div>
 
@@ -104,7 +119,7 @@ async function renderOfferSnapshot(frm) {
         ${metricCard("候选人期望", applicant.salary_expectation || "待补充")}
         ${metricCard("匹配分", formatScore(applicant.aihr_match_score))}
         ${metricCard("薪酬交接", payrollLabel(offer.payroll_handoff_status))}
-        ${metricCard("入职负责人", offer.onboarding_owner || "待分配")}
+        ${metricCard("薪酬负责人", offer.payroll_owner || "待分配")}
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
@@ -112,6 +127,10 @@ async function renderOfferSnapshot(frm) {
           <div style="border-radius: 16px; padding: 16px; background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.08);">
             <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">交接摘要</div>
             <div style="font-size: 13px; line-height: 1.8; color: #0f172a; white-space: pre-wrap;">${escapeHtml(actions.handoff_summary || "待生成 Offer 交接摘要。")}</div>
+          </div>
+          <div style="border-radius: 16px; padding: 16px; background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.08);">
+            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">薪酬交接摘要</div>
+            <div style="font-size: 13px; line-height: 1.8; color: #0f172a; white-space: pre-wrap;">${escapeHtml(actions.payroll_handoff_summary || offer.payroll_handoff_summary || "待生成薪酬交接摘要。")}</div>
           </div>
           <div style="border-radius: 16px; padding: 16px; background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.08);">
             <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">薪酬与条款备注</div>

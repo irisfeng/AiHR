@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from datetime import date, datetime
 from typing import Any
 
 from aihr.services.screening import build_agency_brief
@@ -118,6 +119,37 @@ def build_offer_handoff_notes(
     ).strip()
 
 
+def build_payroll_handoff_summary(
+    *,
+    candidate_name: str,
+    opening_title: str,
+    payroll_owner: str,
+    payroll_handoff_status: str,
+    salary_expectation: str,
+    opening_salary_range: str,
+    compensation_notes: str,
+) -> str:
+    return "\n".join(
+        [
+            "AIHR 薪酬交接摘要",
+            f"候选人：{candidate_name or '待补充'}",
+            f"岗位：{opening_title or '待补充'}",
+            f"薪酬负责人：{payroll_owner or '待分配'}",
+            f"当前状态：{payroll_handoff_status or 'Not Started'}",
+            f"候选人期望：{salary_expectation or '待补充'}",
+            f"岗位预算：{opening_salary_range or '待补充'}",
+            "",
+            "薪酬备注：",
+            compensation_notes or "待确认 base、试用期薪资、补贴项和发薪口径。",
+            "",
+            "建议动作：",
+            f"- {get_payroll_handoff_next_action(payroll_handoff_status)}",
+            "- 核对最终薪资、试用期规则、补贴项和到岗日期。",
+            "- 确认数据已经同步到入职交接和员工主档。",
+        ]
+    ).strip()
+
+
 def get_offer_next_action(status: str, payroll_handoff_status: str) -> str:
     if status == "Accepted":
         if payroll_handoff_status == "Completed":
@@ -128,6 +160,15 @@ def get_offer_next_action(status: str, payroll_handoff_status: str) -> str:
     if status == "Rejected":
         return "归档 Offer 结果并回流岗位策略"
     return "跟进候选人反馈并确认到岗时间"
+
+
+def get_payroll_handoff_next_action(status: str) -> str:
+    mapping = {
+        "Not Started": "先确认薪资结构、试用期和发薪口径",
+        "Ready": "通知薪酬负责人完成建档并回写结果",
+        "Completed": "核对首月薪资信息并确认员工档案",
+    }
+    return mapping.get(status or "Not Started", "先确认薪资结构、试用期和发薪口径")
 
 
 def get_feedback_next_action(result: str) -> str:
@@ -237,6 +278,27 @@ def get_onboarding_next_action(boarding_status: str, payroll_ready: bool) -> str
     return "先补齐预入职资料和薪酬建档信息"
 
 
+def split_person_name(full_name: str) -> tuple[str, str, str]:
+    normalized = " ".join(str(full_name or "").strip().split())
+    if not normalized:
+        return ("AIHR", "", "Employee")
+    if " " not in normalized:
+        return (normalized, "", "")
+
+    parts = normalized.split(" ")
+    if len(parts) == 2:
+        return (parts[0], "", parts[1])
+    return (parts[0], " ".join(parts[1:-1]), parts[-1])
+
+
+def resolve_employee_status(date_of_joining: Any, *, today_value: Any = None) -> str:
+    joining_date = _normalize_date(date_of_joining)
+    anchor = _normalize_date(today_value) or date.today()
+    if joining_date and joining_date > anchor:
+        return "Inactive"
+    return "Active"
+
+
 def _bullet_lines(items: Iterable[str] | None, *, empty_text: str) -> list[str]:
     normalized = [str(item).strip() for item in (items or []) if str(item).strip()]
     if not normalized:
@@ -248,3 +310,16 @@ def _read(source: Mapping[str, Any] | Any, fieldname: str) -> Any:
     if isinstance(source, Mapping):
         return source.get(fieldname)
     return getattr(source, fieldname, None)
+
+
+def _normalize_date(value: Any) -> date | None:
+    if not value:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    text = str(value).strip()
+    if not text:
+        return None
+    return date.fromisoformat(text[:10])

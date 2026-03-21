@@ -2,6 +2,7 @@ import unittest
 
 from aihr.services.recruitment_ops import (
     build_feedback_summary,
+    build_payroll_handoff_summary,
     build_requisition_payload,
     build_interviewer_pack,
     build_onboarding_summary,
@@ -12,7 +13,10 @@ from aihr.services.recruitment_ops import (
     get_interview_follow_up_action,
     get_onboarding_next_action,
     get_offer_next_action,
+    get_payroll_handoff_next_action,
     get_screening_next_action,
+    resolve_employee_status,
+    split_person_name,
 )
 
 
@@ -106,6 +110,26 @@ class RecruitmentOpsTests(unittest.TestCase):
         self.assertEqual(get_offer_next_action("Awaiting Response", "Not Started"), "跟进候选人反馈并确认到岗时间")
         self.assertEqual(get_offer_next_action("Accepted", "Ready"), "发起入职任务并通知薪资建档负责人")
 
+    def test_builds_payroll_handoff_summary(self):
+        summary = build_payroll_handoff_summary(
+            candidate_name="Mia Zhang",
+            opening_title="HRBP - AIHR MVP Demo",
+            payroll_owner="payroll.demo@aihr.local",
+            payroll_handoff_status="Ready",
+            salary_expectation="CNY 28000 - 32000",
+            opening_salary_range="CNY 25000 - 35000",
+            compensation_notes="需确认试用期薪资、餐补与发薪日。",
+        )
+
+        self.assertIn("AIHR 薪酬交接摘要", summary)
+        self.assertIn("payroll.demo@aihr.local", summary)
+        self.assertIn("试用期薪资", summary)
+
+    def test_maps_payroll_handoff_next_action(self):
+        self.assertEqual(get_payroll_handoff_next_action("Not Started"), "先确认薪资结构、试用期和发薪口径")
+        self.assertEqual(get_payroll_handoff_next_action("Ready"), "通知薪酬负责人完成建档并回写结果")
+        self.assertEqual(get_payroll_handoff_next_action("Completed"), "核对首月薪资信息并确认员工档案")
+
     def test_maps_feedback_next_action(self):
         self.assertEqual(get_feedback_next_action("Cleared"), "同步面试结论并推进 Offer 评估")
         self.assertEqual(get_feedback_next_action("Rejected"), "同步淘汰结论并归档面试反馈")
@@ -150,6 +174,15 @@ class RecruitmentOpsTests(unittest.TestCase):
         self.assertEqual(get_onboarding_next_action("Pending", False), "先补齐预入职资料和薪酬建档信息")
         self.assertEqual(get_onboarding_next_action("In Process", True), "推进入职活动并创建员工档案")
         self.assertEqual(get_onboarding_next_action("Completed", True), "确认员工档案与首月薪资信息")
+
+    def test_splits_person_name_for_employee_record(self):
+        self.assertEqual(split_person_name("Jane Smith"), ("Jane", "", "Smith"))
+        self.assertEqual(split_person_name("Mary Ann Lee"), ("Mary", "Ann", "Lee"))
+        self.assertEqual(split_person_name("张敏"), ("张敏", "", ""))
+
+    def test_resolves_employee_status_from_joining_date(self):
+        self.assertEqual(resolve_employee_status("2026-03-25", today_value="2026-03-21"), "Inactive")
+        self.assertEqual(resolve_employee_status("2026-03-20", today_value="2026-03-21"), "Active")
 
 
 if __name__ == "__main__":
