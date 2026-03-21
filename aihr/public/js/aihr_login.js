@@ -32,47 +32,74 @@
       return;
     }
 
+    const head = section.querySelector(".page-card-head");
+    const form = section.querySelector("form");
+    const card = section.querySelector(".login-content.page-card");
+    if (!head || !form || !card) {
+      return;
+    }
+
+    const panel = document.createElement("section");
+    panel.className = "aihr-login-panel";
+
+    head.classList.add("aihr-login-intro");
+    const title = head.querySelector("h4");
+    if (title) {
+      title.textContent = selector === ".for-email-login" ? "通过邮箱链接登录" : "欢迎回到 AIHR";
+    }
+
+    if (!head.querySelector(".aihr-login-eyebrow")) {
+      const eyebrow = document.createElement("div");
+      eyebrow.className = "aihr-login-eyebrow";
+      eyebrow.textContent = "AIHR 招聘系统";
+      head.insertBefore(eyebrow, head.firstChild);
+    }
+
+    if (!head.querySelector(".aihr-login-subtitle")) {
+      const subtitle = document.createElement("p");
+      subtitle.className = "aihr-login-subtitle";
+      subtitle.textContent =
+        selector === ".for-email-login"
+          ? "如果你更适合使用免密入口，可以通过邮箱链接完成验证并进入 AIHR。"
+          : "进入岗位需求、候选人推进、面试协同与录用交接，保持招聘主线清晰可见。";
+      head.appendChild(subtitle);
+    }
+
+    panel.appendChild(head);
+    panel.appendChild(form);
+    section.prepend(panel);
+
     const hero = document.createElement("aside");
     hero.className = "aihr-login-hero";
     hero.innerHTML = `
-      <div class="aihr-login-kicker">AIHR 品牌后台</div>
-      <div class="aihr-login-hero-title">让招聘协同自然融入 AIHR。</div>
+      <div class="aihr-login-kicker">AIHR 招聘后台</div>
+      <div class="aihr-login-hero-title">让招聘流程回到一个清晰、安静的界面里。</div>
       <div class="aihr-login-hero-copy">
-        用 Frappe 承载流程和数据，用 AIHR 承载品牌、协同和智能化体验。HR 团队打开系统，
-        看到的应该是招聘主链路，而不是 ERP 模块清单。
+        岗位需求、候选人、面试反馈、Offer 与入职交接统一收口在同一条主线上。
+        AI 优先承担整理、摘要与提醒，人保留判断、确认与关键决策。
       </div>
       <div class="aihr-login-points">
-        <div class="aihr-login-point">岗位需求、候选人、面试反馈、Offer 与入职交接全部在一条主线上推进。</div>
-        <div class="aihr-login-point">AI 优先负责摘要、整理、提醒和协同，HR 保留关键判断与确认。</div>
-        <div class="aihr-login-point">后台保持低代码扩展能力，前台逐步长成你们自己的 AIHR 产品。</div>
+        <div class="aihr-login-point">优先服务 HR 与用人经理的日常推进，而不是展示 ERP 模块清单。</div>
+        <div class="aihr-login-point">支持供应商简历包导入、候选人建档、AI 初筛与面试协同。</div>
+        <div class="aihr-login-point">中文优先，界面保持克制、稳定，适合国内团队持续落地。</div>
       </div>
       <div class="aihr-login-metrics">
         <div class="aihr-login-metric">
           <div class="aihr-login-metric-label">当前主线</div>
-          <div class="aihr-login-metric-value">招聘 MVP</div>
+          <div class="aihr-login-metric-value">招聘流程 MVP</div>
         </div>
         <div class="aihr-login-metric">
-          <div class="aihr-login-metric-label">默认语言</div>
+          <div class="aihr-login-metric-label">默认体验</div>
           <div class="aihr-login-metric-value">中文优先</div>
         </div>
         <div class="aihr-login-metric">
-          <div class="aihr-login-metric-label">交互目标</div>
-          <div class="aihr-login-metric-value">AI 协同</div>
+          <div class="aihr-login-metric-label">协同方式</div>
+          <div class="aihr-login-metric-value">AI 摘要与协同</div>
         </div>
       </div>
     `;
 
-    const card = section.querySelector(".login-content.page-card");
-    if (card) {
-      card.before(hero);
-    } else {
-      section.appendChild(hero);
-    }
-
-    const title = section.querySelector(".page-card-head h4");
-    if (title && title.textContent.includes("Login")) {
-      title.textContent = "登录到 AIHR";
-    }
+    section.appendChild(hero);
   }
 
   function redirectTo(target) {
