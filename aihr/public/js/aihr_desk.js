@@ -136,6 +136,7 @@
     patchRouterForAIHRWorkspaces();
     sanitizeSearchHistory();
     redirectWorkspaceAliasRoute();
+    removeWebsiteMenuEntry();
     injectBrandLabel();
     filterWorkspaceSidebar();
     translateVisibleLabels();
@@ -311,6 +312,29 @@
     label.className = "aihr-brand-text";
     label.textContent = "AIHR";
     home.appendChild(label);
+  }
+
+  function removeWebsiteMenuEntry() {
+    if (window.frappe?.boot?.navbar_settings?.settings_dropdown) {
+      frappe.boot.navbar_settings.settings_dropdown = frappe.boot.navbar_settings.settings_dropdown.filter(
+        (item) => item?.item_label !== "View Website" && item?.item_label !== "查看网站"
+      );
+    }
+
+    if (window.frappe?.ui?.toolbar?.view_website) {
+      frappe.ui.toolbar.view_website = () => {
+        window.location.assign(AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"]);
+      };
+    }
+
+    document
+      .querySelectorAll(".dropdown-navbar-user [data-label='View Website'], .dropdown-navbar-user .dropdown-item")
+      .forEach((node) => {
+        const text = (node.textContent || "").trim();
+        if (text === "查看网站" || text === "View Website") {
+          node.remove();
+        }
+      });
   }
 
   function filterWorkspaceSidebar() {

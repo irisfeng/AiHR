@@ -2,6 +2,7 @@ import unittest
 
 from aihr.setup.navigation import (
     AIHR_DESK_HOME,
+    is_probably_logged_in_system_user,
     normalize_desk_path,
     normalize_route_history_route,
     normalize_workspace_label,
@@ -12,10 +13,28 @@ from aihr.setup.navigation import (
 
 
 class NavigationHistoryTests(unittest.TestCase):
+    def test_logged_in_system_user_can_be_detected_from_user_or_cookies(self):
+        self.assertTrue(is_probably_logged_in_system_user("Administrator"))
+        self.assertTrue(
+            is_probably_logged_in_system_user(
+                "Guest",
+                {"system_user": "yes", "user_id": "Administrator"},
+            )
+        )
+        self.assertFalse(
+            is_probably_logged_in_system_user(
+                "Guest",
+                {"system_user": "no", "user_id": "Guest"},
+            )
+        )
+
     def test_app_root_and_legacy_workspace_paths_redirect_to_stable_routes(self):
+        self.assertEqual(normalize_desk_path("/", "Administrator"), AIHR_DESK_HOME)
         self.assertEqual(normalize_desk_path("/app"), AIHR_DESK_HOME)
+        self.assertEqual(normalize_desk_path("/me"), AIHR_DESK_HOME)
         self.assertEqual(normalize_desk_path("/app/aihr-招聘总览"), AIHR_DESK_HOME)
         self.assertEqual(normalize_desk_path("/app/aihr-用人经理中心"), "/app/aihr-manager-review")
+        self.assertEqual(normalize_desk_path("/", "Guest"), "/")
 
     def test_legacy_workspace_labels_are_normalized(self):
         self.assertEqual(normalize_workspace_label("AIHR 招聘作战台"), "AIHR 招聘总览")

@@ -10,6 +10,10 @@ from aihr.setup.workspace import (
 )
 
 AIHR_DESK_HOME = "/app/aihr-hiring-hq"
+PORTAL_PATH_REDIRECTS = {
+    "/me": AIHR_DESK_HOME,
+    "/my-account": AIHR_DESK_HOME,
+}
 LEGACY_WORKSPACE_LABELS = {
     "AIHR 招聘作战台": WORKSPACE_BLOCK_LABEL,
     "AIHR 用人经理台": MANAGER_WORKSPACE_LABEL,
@@ -44,13 +48,29 @@ def normalize_route_history_route(route: str | None) -> str | None:
     return LEGACY_ROUTE_HISTORY_MAP.get(normalized, normalized)
 
 
-def normalize_desk_path(path: str | None) -> str | None:
+def normalize_desk_path(path: str | None, user: str | None = None) -> str | None:
     normalized = unquote((path or "").strip())
     if not normalized:
         return None
+    if normalized == "/" and user and user != "Guest":
+        return AIHR_DESK_HOME
     if normalized == "/app":
         return AIHR_DESK_HOME
+    if normalized in PORTAL_PATH_REDIRECTS:
+        return PORTAL_PATH_REDIRECTS[normalized]
     return WORKSPACE_PATH_REDIRECTS.get(normalized, normalized)
+
+
+def is_probably_logged_in_system_user(user: str | None, cookies: dict[str, Any] | None = None) -> bool:
+    if user and user != "Guest":
+        return True
+
+    cookie_values = cookies or {}
+    return cookie_values.get("system_user") == "yes" and cookie_values.get("user_id") not in {
+        None,
+        "",
+        "Guest",
+    }
 
 
 def should_hide_route_history(route: str | None) -> bool:
@@ -121,6 +141,18 @@ def extend_bootinfo(bootinfo) -> None:
     bootinfo.frequently_visited_links = sanitize_frequently_visited_links(
         list(bootinfo.get("frequently_visited_links") or [])
     )
+    navbar_settings = bootinfo.get("navbar_settings")
+    if not navbar_settings:
+        return
+
+    settings_dropdown = list(getattr(navbar_settings, "settings_dropdown", None) or [])
+    filtered_settings_dropdown = [
+        item for item in settings_dropdown if item.get("item_label") != "View Website"
+    ]
+    if isinstance(navbar_settings, dict):
+        navbar_settings["settings_dropdown"] = filtered_settings_dropdown
+    else:
+        navbar_settings.settings_dropdown = filtered_settings_dropdown
 
 
 def redirect_desk_root() -> None:
@@ -131,6 +163,12 @@ def redirect_desk_root() -> None:
     if not request or request.method not in {"GET", "HEAD"}:
         return
 
-    target = normalize_desk_path(getattr(request, "path", ""))
+    current_user = getattr(frappe.session, "user", None)
+    if getattr(request, "path", "") == "/" and is_probably_logged_in_system_user(
+        current_user, getattr(request, "cookies", None)
+    ):
+        raise RequestRedirect(AIHR_DESK_HOME)
+
+    target = normalize_desk_path(getattr(request, "path", ""), current_user)
     if target and target != request.path:
         raise RequestRedirect(target)
