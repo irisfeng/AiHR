@@ -344,6 +344,8 @@
         wrapper.classList.add("aihr-sidebar");
       }
 
+      let visibleSectionCount = 0;
+
       sidebar.querySelectorAll(".sidebar-item-container").forEach((item) => {
         const label = item.querySelector(".sidebar-item-label")?.textContent?.trim() || "";
         const shouldShow = AIHR_ALLOWED_WORKSPACES.has(label);
@@ -361,12 +363,17 @@
         );
 
         section.classList.toggle("aihr-hidden-section", visibleItems.length === 0);
+        if (visibleItems.length > 0) {
+          visibleSectionCount += 1;
+        }
 
         const title = section.querySelector(".section-title");
         if (title && visibleItems.length > 0 && title.textContent.trim() === "Public") {
           title.textContent = "AIHR 导航";
         }
       });
+
+      sidebar.classList.toggle("aihr-single-section", visibleSectionCount <= 1);
     });
   }
 

@@ -124,6 +124,10 @@ body.aihr-desk .desk-sidebar .aihr-hidden-section {
   display: none !important;
 }
 
+body.aihr-desk .desk-sidebar.aihr-single-section .standard-sidebar-label {
+  display: none !important;
+}
+
 body.aihr-desk .layout-main-section {
   background: transparent;
 }
