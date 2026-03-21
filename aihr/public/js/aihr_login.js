@@ -23,7 +23,7 @@
     document.title = "AIHR 登录";
 
     enhanceLoginSection(".for-login");
-    enhanceLoginSection(".for-email-login");
+    enhanceLoginSection(".for-login-with-email-link");
   }
 
   function enhanceLoginSection(selector) {
@@ -33,9 +33,8 @@
     }
 
     const head = section.querySelector(".page-card-head");
-    const form = section.querySelector("form");
     const card = section.querySelector(".login-content.page-card");
-    if (!head || !form || !card) {
+    if (!head || !card) {
       return;
     }
 
@@ -59,14 +58,14 @@
       const subtitle = document.createElement("p");
       subtitle.className = "aihr-login-subtitle";
       subtitle.textContent =
-        selector === ".for-email-login"
+        selector === ".for-login-with-email-link"
           ? "如果你更适合使用免密入口，可以通过邮箱链接完成验证并进入 AIHR。"
           : "进入岗位需求、候选人推进、面试协同与录用交接，保持招聘主线清晰可见。";
       head.appendChild(subtitle);
     }
 
     panel.appendChild(head);
-    panel.appendChild(form);
+    panel.appendChild(card);
     section.prepend(panel);
 
     const hero = document.createElement("aside");
