@@ -116,6 +116,15 @@ SITE_NAME=development.localhost \
 ./scripts/start_dev_site.sh
 ```
 
+如果项目需要读取 MinerU 等外部服务配置，推荐先复制：
+
+```bash
+cp .env.example .env.local
+```
+
+然后把本地开发所需的 `AIHR_` / `MINERU_` 环境变量写进 `.env.local`。  
+`./scripts/start_dev_site.sh` 会自动读取这些变量并传入容器。
+
 默认访问地址：
 
 ```text

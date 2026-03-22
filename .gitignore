@@ -19,3 +19,5 @@ logs/
 sites/
 .playwright-cli/
 output/playwright/
+.env
+.env.local
