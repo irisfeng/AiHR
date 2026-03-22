@@ -1,5 +1,8 @@
 frappe.ui.form.on("Job Opening", {
   async refresh(frm) {
+    if (!frm.doc.job_title && frm.doc.designation) {
+      await frm.set_value("job_title", frm.doc.designation);
+    }
     await renderOpeningSnapshot(frm);
 
     if (frm.is_new()) {
@@ -33,10 +36,17 @@ frappe.ui.form.on("Job Opening", {
       });
       await renderOpeningSnapshot(frm);
       const result = response.message || {};
+      if (result.screening_gate && !result.screening_gate.ready) {
+        frappe.msgprint({
+          title: "暂不能批量初筛",
+          message: escapeHtml(result.screening_gate.message || "请先补齐岗位需求后再运行批量 AI 初筛。"),
+        });
+        return;
+      }
       frappe.msgprint(`已完成 ${result.screened_count || 0} 位候选人的 AI 初筛。`);
     });
 
-    frm.add_custom_button("录入候选人", () => {
+    frm.add_custom_button("补录候选人", () => {
       frappe.new_doc("Job Applicant", { job_title: frm.doc.name });
     });
 
@@ -78,6 +88,11 @@ frappe.ui.form.on("Job Opening", {
       });
     });
   },
+  designation(frm) {
+    if (!frm.doc.job_title && frm.doc.designation) {
+      frm.set_value("job_title", frm.doc.designation);
+    }
+  },
 });
 
 async function renderOpeningSnapshot(frm) {
@@ -97,14 +112,17 @@ async function renderOpeningSnapshot(frm) {
   });
   const summary = response.message || {};
   const topCandidates = summary.top_candidates || [];
-  const queueText = frm.doc.aihr_next_action || "收集首批候选人并完成 AI 初筛";
+  const screeningGate = summary.screening_gate || {};
+  const queueText = screeningGate.ready
+    ? frm.doc.aihr_next_action || "收集首批候选人并完成 AI 初筛"
+    : "先补齐岗位需求，再批量生成 AI 摘要";
 
   field.$wrapper.html(`
     <div style="border-radius: 18px; padding: 20px; background: linear-gradient(135deg, #0f172a, #143043 55%, #163a4b 100%); color: #fff; border: 1px solid rgba(15, 23, 42, 0.1); overflow: hidden;">
       <div style="display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap;">
         <div style="max-width: 56%;">
           <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.72); font-weight: 700;">AIHR Pipeline View</div>
-          <div style="font-size: 28px; font-weight: 700; margin-top: 6px;">${escapeHtml(frm.doc.job_title || frm.doc.name)}</div>
+          <div style="font-size: 28px; font-weight: 700; margin-top: 6px;">${escapeHtml(summary.job_opening_title || frm.doc.job_title || frm.doc.designation || frm.doc.name)}</div>
           <div style="margin-top: 8px; color: rgba(255,255,255,0.78); line-height: 1.7;">
             ${escapeHtml(frm.doc.description || "这是一条招聘中岗位记录，用于承接候选人、摘要卡和后续推进动作。")}
           </div>
@@ -121,6 +139,17 @@ async function renderOpeningSnapshot(frm) {
         ${chip(frm.doc.aihr_posting_owner || "待分配负责人", "rgba(14,165,233,0.18)")}
         ${chip((frm.doc.aihr_channel_mix || "渠道待补充").replace(/\n/g, " / "), "rgba(249,115,22,0.2)")}
       </div>
+
+      ${
+        screeningGate.ready
+          ? ""
+          : `
+        <div style="margin-bottom: 18px; border-radius: 14px; padding: 14px 16px; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.24); color: #fef3c7;">
+          <div style="font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.72); margin-bottom: 6px;">AI 初筛待激活</div>
+          <div style="font-size: 14px; line-height: 1.7;">${escapeHtml(screeningGate.message || "当前岗位需求还不完整，暂不能自动打分。")}</div>
+        </div>
+      `
+      }
 
       <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px;">
         ${darkMetric("候选人总量", summary.total_applicants || 0)}
@@ -153,7 +182,7 @@ function renderCandidateList(candidates) {
   if (!candidates.length) {
     return `
       <div style="border: 1px dashed rgba(15,23,42,0.12); border-radius: 14px; padding: 16px; color: var(--text-muted);">
-        还没有候选人进入这个岗位。建议先录入候选人或导入简历，再进行批量 AI 初筛。
+        还没有候选人进入这个岗位。建议先导入供应商简历压缩包，再由系统批量生成 AI 摘要；手工补录只作为兜底方式。
       </div>
     `;
   }
@@ -215,6 +244,7 @@ function openResumeImportDialog(frm) {
         fieldtype: "Check",
         label: "导入后自动生成 AI 摘要",
         default: 1,
+        description: "只有岗位需求单已补齐岗位职责与必备技能后，导入的候选人才会自动打分。",
       },
     ],
     primary_action_label: "开始导入",

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from aihr.services.recruitment_ops import (
+    build_opening_display_title,
     build_interviewer_pack,
     build_feedback_summary,
     build_offer_handoff_notes,
@@ -13,6 +14,7 @@ from aihr.services.recruitment_ops import (
     build_payroll_handoff_summary,
     default_onboarding_activities,
     generate_requisition_agency_brief,
+    evaluate_screening_readiness,
     get_feedback_next_action,
     get_interview_follow_up_action,
     get_onboarding_next_action,
@@ -88,6 +90,7 @@ def create_resume_intake_batch(
     batch_id = f"RIB-{now_datetime().strftime('%Y%m%d%H%M%S')}"
     archive_path = _resolve_file_url_to_path(archive_file)
     opening = frappe.get_doc("Job Opening", job_opening)
+    screening_gate = _get_opening_screening_gate(opening)
     archive_items = extract_resume_archive(archive_path)
     archive_summary = summarize_archive_results(archive_items)
 
@@ -95,10 +98,12 @@ def create_resume_intake_batch(
     runtime_failed_count = 0
     log_lines = [
         f"批次：{batch_id}",
-        f"岗位：{opening.job_title or opening.name}",
+        f"岗位：{screening_gate['opening_title']}",
         f"来源渠道：{source_channel or '供应商线下包'}",
         f"供应商：{supplier_name or '未填写'}",
     ]
+    if not screening_gate["ready"] and int(auto_run_screening or 0):
+        log_lines.append(f"AI 初筛待激活：{screening_gate['message']}")
 
     for item in archive_items:
         if item["status"] != "Parsed":
@@ -115,9 +120,15 @@ def create_resume_intake_batch(
             )
             imported_applicants.append(applicant.name)
 
-            if int(auto_run_screening or 0):
+            if int(auto_run_screening or 0) and screening_gate["ready"]:
                 screen_job_applicant(applicant.name, save=1)
                 screening_label = "已生成 AI 摘要"
+            elif int(auto_run_screening or 0):
+                _mark_applicant_pending_requirements(applicant, screening_gate["message"])
+                screening_label = "已入库，待岗位需求完善后生成 AI 摘要"
+            elif not screening_gate["ready"]:
+                _mark_applicant_pending_requirements(applicant, screening_gate["message"])
+                screening_label = "已入库，待岗位需求完善后生成 AI 摘要"
             else:
                 screening_label = "已入库，待手动生成 AI 摘要"
 
@@ -139,6 +150,7 @@ def create_resume_intake_batch(
     return {
         "batch": batch_id,
         "status": status,
+        "screening_gate": screening_gate,
         "summary": {
             "total_files": archive_summary["total_files"],
             "imported_count": len(imported_applicants),
@@ -195,6 +207,7 @@ def get_hiring_hq_snapshot() -> dict[str, Any]:
         limit_page_length=20,
     )
     requisition_by_name = {item["name"]: item for item in requisitions}
+    opening_by_name = {item["name"]: item for item in openings}
 
     applicants = frappe.get_all(
         "Job Applicant",
@@ -319,7 +332,7 @@ def get_hiring_hq_snapshot() -> dict[str, Any]:
                 "meta": " / ".join(
                     part
                     for part in [
-                        applicant.get("job_title"),
+                        _opening_title_by_name(opening_by_name, applicant.get("job_title")),
                         _candidate_status_label(screening.get("status") if screening else applicant.get("aihr_ai_status") or applicant.get("status")),
                     ]
                     if part
@@ -346,14 +359,14 @@ def get_hiring_hq_snapshot() -> dict[str, Any]:
         top_candidates.append(
             {
                 "name": applicant.get("applicant_name") or applicant["name"],
-                "job_title": applicant.get("job_title") or "未关联岗位",
+                "job_title": _opening_title_by_name(opening_by_name, applicant.get("job_title")),
                 "city": applicant.get("aihr_candidate_city") or "城市待补充",
                 "status_label": _candidate_status_label(
                     screening.get("status") if screening else applicant.get("aihr_ai_status") or applicant.get("status")
                 ),
                 "score": f"{float(applicant.get('aihr_match_score') or 0):.0f}",
                 "next_action_short": _truncate_text(applicant.get("aihr_next_action") or "待确认", 10),
-                "opening_short": _truncate_text(applicant.get("job_title") or "未关联岗位", 12),
+                "opening_short": _truncate_text(_opening_title_by_name(opening_by_name, applicant.get("job_title")), 12),
                 "next_action": applicant.get("aihr_next_action") or "待确认下一步",
                 "route": get_url_to_form("Job Applicant", applicant["name"]),
             }
@@ -417,6 +430,7 @@ def get_job_applicant_snapshot(job_applicant: str) -> dict[str, Any]:
     screening_name = frappe.db.get_value("AI Screening", {"job_applicant": applicant.name}, "name")
     screening = frappe.get_doc("AI Screening", screening_name) if screening_name else None
     job_opening = frappe.get_doc("Job Opening", applicant.job_title) if getattr(applicant, "job_title", None) else None
+    screening_gate = _get_opening_screening_gate(job_opening)
     requisition = (
         frappe.get_doc("Job Requisition", job_opening.job_requisition)
         if job_opening and getattr(job_opening, "job_requisition", None)
@@ -450,6 +464,7 @@ def get_job_applicant_snapshot(job_applicant: str) -> dict[str, Any]:
         }
         if requisition
         else None,
+        "screening_gate": screening_gate,
         "screening": {
             "name": screening.name,
             "status": screening.status,
@@ -470,6 +485,9 @@ def get_job_applicant_snapshot(job_applicant: str) -> dict[str, Any]:
 def get_job_opening_pipeline_summary(job_opening: str) -> dict[str, Any]:
     if not frappe:
         raise RuntimeError("Frappe is required for fetching Job Opening pipeline summaries.")
+
+    opening = frappe.get_doc("Job Opening", job_opening)
+    screening_gate = _get_opening_screening_gate(opening)
 
     applicants = frappe.get_all(
         "Job Applicant",
@@ -520,6 +538,8 @@ def get_job_opening_pipeline_summary(job_opening: str) -> dict[str, Any]:
 
     return {
         "job_opening": job_opening,
+        "job_opening_title": build_opening_display_title(opening),
+        "screening_gate": screening_gate,
         "total_applicants": len(applicants),
         "status_counts": status_counts,
         "review_queue": status_counts.get("Ready for Review", 0),
@@ -1241,6 +1261,18 @@ def screen_job_applicant(job_applicant: str, save: int = 1) -> dict[str, Any]:
         raise RuntimeError("Frappe is required for screening Job Applicant records.")
 
     applicant = frappe.get_doc("Job Applicant", job_applicant)
+    opening = _get_job_opening_doc(getattr(applicant, "job_title", None))
+    screening_gate = _get_opening_screening_gate(opening)
+    if not screening_gate["ready"]:
+        if save:
+            _mark_applicant_pending_requirements(applicant, screening_gate["message"])
+        return {
+            "job_applicant": applicant.name,
+            "parsed_resume": None,
+            "screening": None,
+            "screening_gate": screening_gate,
+        }
+
     requirements = _get_job_requirements(applicant)
     preferred_skills = _get_requisition_field(applicant, "aihr_nice_to_have_skills")
     preferred_city = _get_requisition_field(applicant, "aihr_work_city") or _get_job_opening_field(applicant, "location")
@@ -1265,6 +1297,7 @@ def screen_job_applicant(job_applicant: str, save: int = 1) -> dict[str, Any]:
         "job_applicant": applicant.name,
         "parsed_resume": parsed_resume,
         "screening": screening,
+        "screening_gate": screening_gate,
     }
 
 
@@ -1279,11 +1312,15 @@ def screen_job_opening_applicants(job_opening: str, save: int = 1) -> dict[str, 
         pluck="name",
     )
     screened = [screen_job_applicant(job_applicant=name, save=save) for name in applicants]
+    completed = [item for item in screened if item.get("screening")]
+    skipped = [item for item in screened if not item.get("screening")]
 
     return {
         "job_opening": job_opening,
-        "screened_count": len(screened),
-        "job_applicants": [item["job_applicant"] for item in screened],
+        "screened_count": len(completed),
+        "skipped_count": len(skipped),
+        "job_applicants": [item["job_applicant"] for item in completed],
+        "screening_gate": skipped[0].get("screening_gate") if skipped else None,
     }
 
 
@@ -1726,6 +1763,38 @@ def _update_applicant_summary(applicant, parsed_resume: dict[str, Any], screenin
     applicant.save(ignore_permissions=True)
 
 
+def _mark_applicant_pending_requirements(applicant, message: str) -> None:
+    applicant.aihr_ai_status = "Not Screened"
+    applicant.aihr_next_action = "先完善岗位需求，再运行 AI 初筛"
+    if not getattr(applicant, "aihr_match_score", None):
+        applicant.aihr_match_score = 0
+    applicant.save(ignore_permissions=True)
+
+
+def _get_opening_screening_gate(opening) -> dict[str, Any]:
+    if not opening:
+        return {
+            "ready": False,
+            "opening_title": "未关联岗位",
+            "missing_fields": ["招聘中岗位"],
+            "message": "候选人尚未关联招聘中岗位，暂不能进行 AI 初筛。",
+        }
+
+    requisition = (
+        frappe.get_doc("Job Requisition", opening.job_requisition)
+        if getattr(opening, "job_requisition", None)
+        else None
+    )
+    payload = {
+        "job_title": build_opening_display_title(opening),
+        "designation": getattr(opening, "designation", "") or (getattr(requisition, "designation", "") if requisition else ""),
+        "job_requisition": getattr(opening, "job_requisition", ""),
+        "description": getattr(opening, "description", "") or (getattr(requisition, "description", "") if requisition else ""),
+        "aihr_must_have_skills": getattr(requisition, "aihr_must_have_skills", "") if requisition else "",
+    }
+    return evaluate_screening_readiness(payload)
+
+
 def _csv_to_list(value: str | None) -> list[str]:
     return [item.strip() for item in (value or "").split(",") if item.strip()]
 
@@ -1741,6 +1810,13 @@ def _build_metric(label: str, value: Any, hint: str, tone: str) -> dict[str, Any
         "hint": hint,
         "tone": tone,
     }
+
+
+def _opening_title_by_name(opening_by_name: dict[str, dict[str, Any]], opening_name: str | None) -> str:
+    if not opening_name:
+        return "未关联岗位"
+    opening = opening_by_name.get(opening_name) or {}
+    return build_opening_display_title(opening) if opening else opening_name
 
 
 def _is_active_requisition(status: str | None) -> bool:

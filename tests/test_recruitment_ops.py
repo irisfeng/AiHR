@@ -1,6 +1,7 @@
 import unittest
 
 from aihr.services.recruitment_ops import (
+    build_opening_display_title,
     build_feedback_summary,
     build_payroll_handoff_summary,
     build_requisition_payload,
@@ -8,6 +9,7 @@ from aihr.services.recruitment_ops import (
     build_onboarding_summary,
     build_offer_handoff_notes,
     default_onboarding_activities,
+    evaluate_screening_readiness,
     generate_requisition_agency_brief,
     get_feedback_next_action,
     get_interview_follow_up_action,
@@ -21,6 +23,10 @@ from aihr.services.recruitment_ops import (
 
 
 class RecruitmentOpsTests(unittest.TestCase):
+    def test_builds_opening_display_title(self):
+        self.assertEqual(build_opening_display_title({"job_title": "交付工程师"}), "交付工程师")
+        self.assertEqual(build_opening_display_title({"designation": "运维工程师"}), "运维工程师")
+
     def test_builds_requisition_payload_from_custom_fields(self):
         payload = build_requisition_payload(
             {
@@ -42,6 +48,29 @@ class RecruitmentOpsTests(unittest.TestCase):
         self.assertEqual(payload["work_city"], "Shanghai")
         self.assertEqual(payload["salary_currency"], "CNY")
         self.assertEqual(payload["must_have_skills"], "recruiting, onboarding")
+
+    def test_evaluates_screening_readiness(self):
+        ready = evaluate_screening_readiness(
+            {
+                "job_requisition": "HR-HIREQ-0001",
+                "job_title": "交付工程师",
+                "description": "负责项目交付、运维值守与技术支持。",
+                "aihr_must_have_skills": "linux, docker, 运维",
+            }
+        )
+        blocked = evaluate_screening_readiness(
+            {
+                "job_title": "交付工程师",
+                "description": "",
+                "aihr_must_have_skills": "",
+            }
+        )
+
+        self.assertTrue(ready["ready"])
+        self.assertFalse(blocked["ready"])
+        self.assertIn("岗位需求单", blocked["missing_fields"])
+        self.assertIn("岗位职责说明", blocked["missing_fields"])
+        self.assertIn("必备技能要求", blocked["missing_fields"])
 
     def test_generates_agency_brief_from_requisition_payload(self):
         brief = generate_requisition_agency_brief(

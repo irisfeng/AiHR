@@ -13,7 +13,7 @@ def generate_requisition_agency_brief(source: Mapping[str, Any] | Any) -> str:
 
 def build_requisition_payload(source: Mapping[str, Any] | Any) -> dict[str, Any]:
     return {
-        "job_title": _read(source, "job_title") or _read(source, "designation") or "New Role",
+        "job_title": build_opening_display_title(source),
         "designation": _read(source, "designation"),
         "department": _read(source, "department"),
         "work_city": _read(source, "aihr_work_city") or _read(source, "work_city"),
@@ -25,6 +25,43 @@ def build_requisition_payload(source: Mapping[str, Any] | Any) -> dict[str, Any]
         "must_have_skills": _read(source, "aihr_must_have_skills") or _read(source, "must_have_skills"),
         "nice_to_have_skills": _read(source, "aihr_nice_to_have_skills") or _read(source, "nice_to_have_skills"),
         "reason_for_requesting": _read(source, "reason_for_requesting") or _read(source, "hiring_goal"),
+    }
+
+
+def build_opening_display_title(source: Mapping[str, Any] | Any) -> str:
+    return (
+        _read(source, "job_title")
+        or _read(source, "designation")
+        or _read(source, "designation_name")
+        or "未命名岗位"
+    )
+
+
+def evaluate_screening_readiness(source: Mapping[str, Any] | Any) -> dict[str, Any]:
+    title = build_opening_display_title(source)
+    description = (_read(source, "description") or "").strip()
+    must_have = (_read(source, "aihr_must_have_skills") or _read(source, "must_have_skills") or "").strip()
+    requisition = (_read(source, "job_requisition") or "").strip()
+
+    missing: list[str] = []
+    if not requisition:
+        missing.append("岗位需求单")
+    if not title or title == "未命名岗位":
+        missing.append("岗位名称")
+    if not description:
+        missing.append("岗位职责说明")
+    if not must_have:
+        missing.append("必备技能要求")
+
+    return {
+        "ready": not missing,
+        "opening_title": title,
+        "missing_fields": missing,
+        "message": (
+            "岗位需求已具备 AI 初筛条件。"
+            if not missing
+            else f"当前还不能进行 AI 初筛，请先补齐：{'、'.join(missing)}。"
+        ),
     }
 
 

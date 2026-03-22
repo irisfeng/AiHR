@@ -27,6 +27,7 @@ frappe.ui.form.on("Job Requisition", {
     frm.add_custom_button("新建招聘中岗位", () => {
       frappe.new_doc("Job Opening", {
         job_requisition: frm.doc.name,
+        job_title: frm.doc.designation,
         designation: frm.doc.designation,
         department: frm.doc.department,
       });

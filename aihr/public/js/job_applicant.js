@@ -11,13 +11,21 @@ function addApplicantActions(frm) {
   }
 
   frm.add_custom_button("运行 AI 初筛", async () => {
-    await frappe.call({
+    const response = await frappe.call({
       method: "aihr.api.recruitment.screen_job_applicant",
       args: { job_applicant: frm.doc.name, save: 1 },
       freeze: true,
       freeze_message: "正在生成候选人摘要卡...",
     });
+    const result = response.message || {};
     await frm.reload_doc();
+    if (result.screening_gate && !result.screening_gate.ready) {
+      frappe.msgprint({
+        title: "暂不能初筛",
+        message: escapeHtml(result.screening_gate.message || "请先补齐岗位需求后再运行 AI 初筛。"),
+      });
+      return;
+    }
     frappe.show_alert({ message: "AI 初筛已更新", indicator: "green" });
   });
 
@@ -66,9 +74,10 @@ async function renderApplicantSnapshot(frm) {
   const screening = data.screening;
   const opening = data.job_opening || {};
   const requisition = data.job_requisition || {};
+  const screeningGate = data.screening_gate || {};
 
   if (!screening) {
-    field.$wrapper.html(renderEmptyCard("当前还没有 AI Screening。点击“运行 AI 初筛”即可生成。"));
+    field.$wrapper.html(renderEmptyCard(screeningGate.ready ? "当前还没有 AI Screening。点击“运行 AI 初筛”即可生成。" : screeningGate.message || "请先补齐岗位需求后再运行 AI 初筛。"));
     return;
   }
 
