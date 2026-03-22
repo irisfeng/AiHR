@@ -358,6 +358,12 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
                 "label": "Next Step Suggestion",
                 "insert_after": "aihr_hiring_recommendation",
             },
+            {
+                "fieldname": "aihr_feedback_summary",
+                "fieldtype": "Text Editor",
+                "label": "Feedback Summary",
+                "insert_after": "aihr_next_step_suggestion",
+            },
         ],
         "Employee Onboarding": [
             {

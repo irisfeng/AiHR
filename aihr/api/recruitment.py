@@ -5,6 +5,11 @@ from hashlib import sha1
 from pathlib import Path
 from typing import Any
 
+from aihr.services.ai_assistant import (
+    build_interviewer_pack_with_llm,
+    enhance_screening_with_llm,
+    summarize_interview_feedback_with_llm,
+)
 from aihr.services.recruitment_ops import (
     build_opening_display_title,
     build_interviewer_pack,
@@ -57,11 +62,20 @@ def preview_resume_screening(
     preferred_city: str | None = None,
 ) -> dict[str, Any]:
     parsed_resume = parse_resume_text(resume_text)
-    result = screen_candidate(
+    heuristic = screen_candidate(
         parsed_resume=parsed_resume,
         job_requirements=job_requirements,
         preferred_skills=preferred_skills or "",
         preferred_city=preferred_city or "",
+    )
+    result = enhance_screening_with_llm(
+        parsed_resume=parsed_resume,
+        resume_text=resume_text,
+        opening_title="预览岗位",
+        job_requirements=job_requirements,
+        preferred_skills=preferred_skills or "",
+        preferred_city=preferred_city or "",
+        heuristic_screening=heuristic,
     )
     return {
         "parsed_resume": parsed_resume,
@@ -906,13 +920,14 @@ def get_interview_feedback_snapshot(interview_feedback: str) -> dict[str, Any]:
         if getattr(row, "skill", None)
     ]
     average_rating = _calculate_average_rating(getattr(feedback, "skill_assessment", []))
-    summary = build_feedback_summary(
+    fallback_summary = build_feedback_summary(
         interviewer=getattr(feedback, "interviewer", ""),
         result=getattr(feedback, "result", ""),
         average_rating=f"{average_rating:.1f} / 5" if average_rating else "待补充",
         feedback=getattr(feedback, "feedback", ""),
         ratings=rating_rows,
     )
+    summary = getattr(feedback, "aihr_feedback_summary", "") or getattr(interview_doc, "interview_summary", "") or fallback_summary
 
     return {
         "interview_feedback": {
@@ -982,7 +997,7 @@ def apply_interview_feedback(interview_feedback: str, save: int = 1) -> dict[str
 
     interview_doc = frappe.get_doc("Interview", feedback.interview)
     average_rating = _calculate_average_rating(getattr(feedback, "skill_assessment", []))
-    feedback_summary = build_feedback_summary(
+    fallback_summary = build_feedback_summary(
         interviewer=getattr(feedback, "interviewer", ""),
         result=getattr(feedback, "result", ""),
         average_rating=f"{average_rating:.1f} / 5" if average_rating else "待补充",
@@ -993,9 +1008,34 @@ def apply_interview_feedback(interview_feedback: str, save: int = 1) -> dict[str
             if getattr(row, "skill", None)
         ],
     )
+    opening = _get_job_opening_doc(getattr(interview_doc, "job_opening", None))
+    applicant = frappe.get_doc("Job Applicant", feedback.job_applicant) if getattr(feedback, "job_applicant", None) else None
+    screening = _get_latest_screening_doc(applicant.name if applicant else None)
+    ai_feedback = summarize_interview_feedback_with_llm(
+        candidate_name=getattr(applicant, "applicant_name", "") if applicant else "",
+        opening_title=getattr(opening, "job_title", "") if opening else "",
+        interview_round=getattr(interview_doc, "interview_round", ""),
+        feedback_result=getattr(feedback, "result", ""),
+        feedback_text=getattr(feedback, "feedback", ""),
+        rating_rows=[
+            f"{row.skill}: {row.rating or '--'} / 5"
+            for row in getattr(feedback, "skill_assessment", [])
+            if getattr(row, "skill", None)
+        ],
+        screening_summary=getattr(screening, "ai_summary", "") if screening else "",
+        fallback_summary=fallback_summary,
+        default_next_action=feedback.aihr_next_step_suggestion,
+        default_hiring_recommendation=getattr(feedback, "aihr_hiring_recommendation", "") or ("Yes" if feedback.result == "Cleared" else "No"),
+    )
+    feedback.aihr_hiring_recommendation = ai_feedback["hiring_recommendation"]
+    feedback.aihr_next_step_suggestion = ai_feedback["next_step_suggestion"]
+    if hasattr(feedback, "aihr_feedback_summary"):
+        feedback.aihr_feedback_summary = ai_feedback["summary"]
+    if save and feedback.docstatus == 0:
+        feedback.save(ignore_permissions=True)
 
     interview_doc.status = feedback.result
-    interview_doc.interview_summary = _truncate_text(_strip_html(feedback_summary), 140)
+    interview_doc.interview_summary = _truncate_text(_strip_html(ai_feedback["interview_summary"]), 140)
     interview_doc.save(ignore_permissions=True)
 
     return {
@@ -1282,11 +1322,20 @@ def screen_job_applicant(job_applicant: str, save: int = 1) -> dict[str, Any]:
         resume_text = _extract_resume_text_from_attachment(applicant.resume_attachment)
 
     parsed_resume = parse_resume_text(resume_text)
-    screening = screen_candidate(
+    heuristic = screen_candidate(
         parsed_resume=parsed_resume,
         job_requirements=requirements,
         preferred_skills=preferred_skills or "",
         preferred_city=preferred_city or "",
+    )
+    screening = enhance_screening_with_llm(
+        parsed_resume=parsed_resume,
+        resume_text=resume_text,
+        opening_title=build_opening_display_title(opening) if opening else "",
+        job_requirements=requirements,
+        preferred_skills=preferred_skills or "",
+        preferred_city=preferred_city or "",
+        heuristic_screening=heuristic,
     )
 
     if save:
@@ -1325,13 +1374,25 @@ def screen_job_opening_applicants(job_opening: str, save: int = 1) -> dict[str, 
 
 
 def _build_interviewer_pack_for_context(interview_doc, applicant, opening, screening) -> str:
-    return build_interviewer_pack(
+    fallback_pack = build_interviewer_pack(
         candidate_name=getattr(applicant, "applicant_name", "") if applicant else "",
         opening_title=getattr(opening, "job_title", "") if opening else "",
         interview_round=getattr(interview_doc, "interview_round", ""),
         interview_mode=_interview_mode_label(getattr(interview_doc, "aihr_interview_mode", "")),
         schedule_label=_build_interview_schedule_label(interview_doc),
         ai_summary=getattr(screening, "ai_summary", "") if screening else "",
+        strengths=_lines_to_list(getattr(screening, "strengths", "")) if screening else [],
+        risks=_lines_to_list(getattr(screening, "risks", "")) if screening else [],
+        suggested_questions=_lines_to_list(getattr(screening, "suggested_questions", "")) if screening else [],
+    )
+    return build_interviewer_pack_with_llm(
+        fallback_pack=fallback_pack,
+        candidate_name=getattr(applicant, "applicant_name", "") if applicant else "",
+        opening_title=getattr(opening, "job_title", "") if opening else "",
+        interview_round=getattr(interview_doc, "interview_round", ""),
+        interview_mode=_interview_mode_label(getattr(interview_doc, "aihr_interview_mode", "")),
+        schedule_label=_build_interview_schedule_label(interview_doc),
+        screening_summary=getattr(screening, "ai_summary", "") if screening else "",
         strengths=_lines_to_list(getattr(screening, "strengths", "")) if screening else [],
         risks=_lines_to_list(getattr(screening, "risks", "")) if screening else [],
         suggested_questions=_lines_to_list(getattr(screening, "suggested_questions", "")) if screening else [],

@@ -46,6 +46,13 @@ cp .env.example .env.local
 AIHR_MINERU_API_TOKEN="你的 MinerU Token"
 ```
 
+如果要启用真正的 AI 语义筛选与面试助手，还可以继续配置：
+
+```bash
+AIHR_LLM_API_KEY="你的大模型 API Key"
+AIHR_LLM_MODEL="gpt-5-mini"
+```
+
 `./scripts/start_dev_site.sh` 会自动读取项目根目录下的 `.env` 和 `.env.local`，并把 `AIHR_` / `MINERU_` 变量传入容器。
 
 如果是将当前 app 安装到已有 Frappe bench，可使用：
@@ -67,6 +74,11 @@ AIHR_MINERU_API_TOKEN="你的 MinerU Token"
 5. 运行或自动生成 `AI 初筛`
 6. 在 `面试安排`、`面试反馈`、`Offer 管理`、`入职交接` 中继续推进
 
+说明：
+
+- 未配置 `AIHR_LLM_API_KEY` 时，系统会继续使用启发式评分与模板化摘要
+- 配置 `AIHR_LLM_API_KEY` 后，`AI 初筛` 会升级为语义筛选，`面试资料包` 与 `面试反馈总结` 也会自动调用大模型
+
 如果要单独验证“中文简历材料 -> 解析 -> AI 摘要”这条能力，可执行：
 
 ```bash
@@ -86,6 +98,7 @@ python3 scripts/validate_chinese_materials.py
 - 使用手册：[docs/user-manual.md](/Users/tony/Documents/GitHub/aihr/docs/user-manual.md)
 - 简历导入与优化方案：[docs/resume-intake-plan.md](/Users/tony/Documents/GitHub/aihr/docs/resume-intake-plan.md)
 - MinerU PDF 解析说明：[docs/mineru-api.md](/Users/tony/Documents/GitHub/aihr/docs/mineru-api.md)
+- AI 语义筛选与面试助手说明：[docs/ai-assistant.md](/Users/tony/Documents/GitHub/aihr/docs/ai-assistant.md)
 - 本地开发说明：[docs/development-setup.md](/Users/tony/Documents/GitHub/aihr/docs/development-setup.md)
 - 国际化状态：[docs/i18n-status.md](/Users/tony/Documents/GitHub/aihr/docs/i18n-status.md)
 
