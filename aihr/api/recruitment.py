@@ -188,7 +188,7 @@ def get_hiring_hq_snapshot() -> dict[str, Any]:
 
     from frappe.utils import add_to_date, get_url_to_form, now_datetime, today
 
-    openings = frappe.get_all(
+    openings = frappe.get_list(
         "Job Opening",
         fields=[
             "name",
@@ -204,7 +204,7 @@ def get_hiring_hq_snapshot() -> dict[str, Any]:
         order_by="modified desc",
         limit_page_length=20,
     )
-    requisitions = frappe.get_all(
+    requisitions = frappe.get_list(
         "Job Requisition",
         fields=[
             "name",
@@ -223,7 +223,7 @@ def get_hiring_hq_snapshot() -> dict[str, Any]:
     requisition_by_name = {item["name"]: item for item in requisitions}
     opening_by_name = {item["name"]: item for item in openings}
 
-    applicants = frappe.get_all(
+    applicants = frappe.get_list(
         "Job Applicant",
         fields=[
             "name",
@@ -239,7 +239,7 @@ def get_hiring_hq_snapshot() -> dict[str, Any]:
         order_by="aihr_match_score desc, modified desc",
         limit_page_length=200,
     )
-    screenings = frappe.get_all(
+    screenings = frappe.get_list(
         "AI Screening",
         fields=[
             "name",
@@ -276,9 +276,13 @@ def get_hiring_hq_snapshot() -> dict[str, Any]:
 
     week_start = today()
     week_end = add_to_date(week_start, days=6)
-    interviews_this_week = frappe.db.count(
-        "Interview",
-        {"scheduled_on": ["between", [week_start, week_end]]},
+    interviews_this_week = len(
+        frappe.get_list(
+            "Interview",
+            filters={"scheduled_on": ["between", [week_start, week_end]]},
+            fields=["name"],
+            limit_page_length=500,
+        )
     )
 
     active_requisitions = [item for item in requisitions if _is_active_requisition(item.get("status"))]
@@ -441,15 +445,22 @@ def get_job_applicant_snapshot(job_applicant: str) -> dict[str, Any]:
         raise RuntimeError("Frappe is required for fetching Job Applicant snapshots.")
 
     applicant = frappe.get_doc("Job Applicant", job_applicant)
+    _assert_doc_permission(applicant, "read")
     screening_name = frappe.db.get_value("AI Screening", {"job_applicant": applicant.name}, "name")
     screening = frappe.get_doc("AI Screening", screening_name) if screening_name else None
     job_opening = frappe.get_doc("Job Opening", applicant.job_title) if getattr(applicant, "job_title", None) else None
+    if job_opening:
+        _assert_doc_permission(job_opening, "read")
     screening_gate = _get_opening_screening_gate(job_opening)
     requisition = (
         frappe.get_doc("Job Requisition", job_opening.job_requisition)
         if job_opening and getattr(job_opening, "job_requisition", None)
         else None
     )
+    if requisition:
+        _assert_doc_permission(requisition, "read")
+    if screening:
+        _assert_doc_permission(screening, "read")
 
     return {
         "job_applicant": {
@@ -501,9 +512,10 @@ def get_job_opening_pipeline_summary(job_opening: str) -> dict[str, Any]:
         raise RuntimeError("Frappe is required for fetching Job Opening pipeline summaries.")
 
     opening = frappe.get_doc("Job Opening", job_opening)
+    _assert_doc_permission(opening, "read")
     screening_gate = _get_opening_screening_gate(opening)
 
-    applicants = frappe.get_all(
+    applicants = frappe.get_list(
         "Job Applicant",
         filters={"job_title": job_opening},
         fields=[
@@ -518,7 +530,7 @@ def get_job_opening_pipeline_summary(job_opening: str) -> dict[str, Any]:
         order_by="aihr_match_score desc, modified desc",
     )
 
-    screenings = frappe.get_all(
+    screenings = frappe.get_list(
         "AI Screening",
         filters={"job_opening": job_opening},
         fields=["job_applicant", "status", "overall_score"],
@@ -573,9 +585,16 @@ def get_interview_snapshot(interview: str) -> dict[str, Any]:
         raise RuntimeError("Frappe is required for fetching Interview snapshots.")
 
     interview_doc = frappe.get_doc("Interview", interview)
+    _assert_doc_permission(interview_doc, "read")
     applicant = frappe.get_doc("Job Applicant", interview_doc.job_applicant) if getattr(interview_doc, "job_applicant", None) else None
+    if applicant:
+        _assert_doc_permission(applicant, "read")
     opening = _get_job_opening_doc(getattr(interview_doc, "job_opening", None) or getattr(applicant, "job_title", None))
+    if opening:
+        _assert_doc_permission(opening, "read")
     screening = _get_latest_screening_doc(applicant.name if applicant else None)
+    if screening:
+        _assert_doc_permission(screening, "read")
 
     feedback_due_label = _format_datetime_label(getattr(interview_doc, "aihr_feedback_due_at", None))
     schedule_label = _build_interview_schedule_label(interview_doc)
@@ -701,9 +720,16 @@ def get_job_offer_snapshot(job_offer: str) -> dict[str, Any]:
         raise RuntimeError("Frappe is required for fetching Job Offer snapshots.")
 
     offer = frappe.get_doc("Job Offer", job_offer)
+    _assert_doc_permission(offer, "read")
     applicant = frappe.get_doc("Job Applicant", offer.job_applicant) if getattr(offer, "job_applicant", None) else None
+    if applicant:
+        _assert_doc_permission(applicant, "read")
     opening = _get_job_opening_doc(getattr(applicant, "job_title", None))
+    if opening:
+        _assert_doc_permission(opening, "read")
     screening = _get_latest_screening_doc(applicant.name if applicant else None)
+    if screening:
+        _assert_doc_permission(screening, "read")
     onboarding_name = frappe.db.get_value("Employee Onboarding", {"job_offer": offer.name}, "name")
 
     payroll_status = getattr(offer, "aihr_payroll_handoff_status", "") or "Not Started"
@@ -906,13 +932,22 @@ def get_interview_feedback_snapshot(interview_feedback: str) -> dict[str, Any]:
         raise RuntimeError("Frappe is required for fetching Interview Feedback snapshots.")
 
     feedback = frappe.get_doc("Interview Feedback", interview_feedback)
+    _assert_doc_permission(feedback, "read")
     interview_doc = frappe.get_doc("Interview", feedback.interview) if getattr(feedback, "interview", None) else None
+    if interview_doc:
+        _assert_doc_permission(interview_doc, "read")
     applicant = frappe.get_doc("Job Applicant", feedback.job_applicant) if getattr(feedback, "job_applicant", None) else None
+    if applicant:
+        _assert_doc_permission(applicant, "read")
     opening = _get_job_opening_doc(
         (getattr(interview_doc, "job_opening", None) if interview_doc else None)
         or (getattr(applicant, "job_title", None) if applicant else None)
     )
+    if opening:
+        _assert_doc_permission(opening, "read")
     screening = _get_latest_screening_doc(applicant.name if applicant else None)
+    if screening:
+        _assert_doc_permission(screening, "read")
 
     rating_rows = [
         f"{row.skill}: {row.rating or '--'} / 5"
@@ -1442,6 +1477,13 @@ def _get_job_opening_doc(job_opening: str | None):
     if not frappe.db.exists("Job Opening", job_opening):
         return None
     return frappe.get_doc("Job Opening", job_opening)
+
+
+def _assert_doc_permission(doc, permission_type: str = "read") -> None:
+    if not doc:
+        return
+    if not doc.has_permission(permission_type):
+        frappe.throw("你没有权限访问该记录。", frappe.PermissionError)
 
 
 def _default_owner() -> str:

@@ -12,7 +12,7 @@ from aihr.services.screening import build_agency_brief, screen_candidate
 
 def seed_demo_recruitment_data(company: str) -> dict[str, str]:
     company_doc = _ensure_company(company)
-    department = _ensure_department("People", company_doc.name)
+    department = _ensure_department("人事部", company_doc.name)
     designation = _ensure_designation("HRBP")
     requester = _ensure_requester(company_doc.name, department.name, designation.name)
 

@@ -13,8 +13,8 @@
 
 1. `HR / 面试官 / 用人经理` 的页面入口已经分成 3 个中心，且 **Workspace 已按角色绑定**，不再是公开入口。
 2. 当前系统 **仍然没有启用 Workflow**，所以岗位审批、Offer 审批、录用确认还不是制度化审批流。
-3. `用人经理` 角色已经正式落地为 `AIHR Hiring Manager`，但还缺少“仅看本人部门/本人岗位”的行级限制。
-4. 当前最值得优先补的是：`审批流启用 + 部门/岗位范围控制 + 导入结果页`。
+3. `用人经理` 角色已经正式落地为 `AIHR Hiring Manager`，并已增加“仅看本人部门”的行级限制。
+4. 当前最值得优先补的是：`审批流启用 + 岗位范围进一步细化 + 导入结果页`。
 
 当前组织口径已确认采用 **9 个一级平级部门**，不做父子部门：
 
@@ -63,6 +63,17 @@
     - `AIHR Hiring Manager`：读写创建报表
 - `Job Opening / Job Applicant / AI Screening / Interview / Interview Feedback / Job Offer`
   - 已向 `AIHR Hiring Manager` 补充相应只读或协同权限
+- 部门行级范围控制
+  - `AIHR Hiring Manager` 已按 `Department` 收口查询范围
+  - 当前优先来源为 `User Permission(Department)`，未配置时回退到经理关联 `Employee.department`
+  - 已覆盖：
+    - `Job Requisition`
+    - `Job Opening`
+    - `Job Applicant`
+    - `AI Screening`
+    - `Interview`
+    - `Interview Feedback`
+    - `Job Offer`
 
 - `AI Screening`
   - `HR User`：可读写创建删除
@@ -84,30 +95,28 @@
 
 - `Job Requisition`
   - 已能由经理发起，但还没有审批 Workflow
-- `Job Opening / Job Applicant / AI Screening`
-  - 经理已有访问权限，但仍缺“仅看本人部门/本人岗位”的限制
 - `AIHR` 三个工作台
-  - 已做角色可见绑定，但还没加基于部门的内容过滤
+  - 已做角色可见绑定，部分数据接口也已接入部门过滤
+  - 仍需继续补齐“仅看本人岗位”的更细粒度范围
 
 ### 1.3 当前权限设计的核心问题
 
-#### 问题 1：经理中心已经有入口，但经理角色没有真正落地
+#### 问题 1：经理中心已落地，但当前仍停留在“按部门”粒度
 
 当前存在：
 
 - `AIHR 用人经理中心`
 - 自定义 `AIHR Hiring Manager` 角色
+- 基于部门的查询限制
 
 但系统里还没有：
 
-- 基于部门/岗位的行级权限
 - 经理仅看自己岗位的过滤策略
 
 结果是：
 
-- 页面存在
-- 权限不闭环
-- 真实上线时很容易变成“大家都看同一堆数据”
+- 页面和部门范围已经闭环
+- 但跨部门内多经理共管时，仍需要岗位粒度进一步收口
 
 #### 问题 2：岗位需求入口和业务实际不一致
 
@@ -166,7 +175,8 @@
 - 已完成：新增角色 `AIHR Hiring Manager`
 - 已完成：给 3 个 AIHR Workspace 显式绑定角色
 - 已完成：修正 `Job Requisition` 的创建权限，让经理可发起
-- 待完成：让经理中心默认只能看“我负责/我部门”的岗位和候选人
+- 已完成：让经理中心默认只能看“我部门”的岗位和候选人
+- 待完成：从“我部门”进一步细化到“我负责的岗位”
 
 #### P1
 

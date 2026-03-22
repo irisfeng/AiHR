@@ -30,6 +30,26 @@ after_migrate = "aihr.install.after_migrate"
 extend_bootinfo = ["aihr.setup.navigation.extend_bootinfo"]
 before_request = ["aihr.setup.navigation.redirect_desk_root"]
 
+permission_query_conditions = {
+    "Job Requisition": "aihr.permissions.get_job_requisition_query_condition",
+    "Job Opening": "aihr.permissions.get_job_opening_query_condition",
+    "Job Applicant": "aihr.permissions.get_job_applicant_query_condition",
+    "AI Screening": "aihr.permissions.get_ai_screening_query_condition",
+    "Interview": "aihr.permissions.get_interview_query_condition",
+    "Interview Feedback": "aihr.permissions.get_interview_feedback_query_condition",
+    "Job Offer": "aihr.permissions.get_job_offer_query_condition",
+}
+
+has_permission = {
+    "Job Requisition": "aihr.permissions.has_job_requisition_permission",
+    "Job Opening": "aihr.permissions.has_job_opening_permission",
+    "Job Applicant": "aihr.permissions.has_job_applicant_permission",
+    "AI Screening": "aihr.permissions.has_ai_screening_permission",
+    "Interview": "aihr.permissions.has_interview_permission",
+    "Interview Feedback": "aihr.permissions.has_interview_feedback_permission",
+    "Job Offer": "aihr.permissions.has_job_offer_permission",
+}
+
 doc_events = {
     "Job Requisition": {
         "validate": "aihr.events.recruitment.sync_job_requisition_brief",
