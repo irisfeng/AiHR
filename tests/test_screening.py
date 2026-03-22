@@ -64,6 +64,31 @@ class ScreeningTests(unittest.TestCase):
         self.assertIn("组织协同", result["missing_skills"])
         self.assertNotIn("负责招聘、入职、组织协同，支持 aihr 系统试运行。", result["missing_skills"])
 
+    def test_chinese_resume_can_reach_advance_with_matching_profile(self):
+        result = screen_candidate(
+            parsed_resume={
+                "name": "王小雨",
+                "emails": ["wangxiaoyu@demo.com"],
+                "phones": ["13800138011"],
+                "city": "上海",
+                "years_of_experience": 6,
+                "skills": ["招聘", "面试", "入职", "数据分析"],
+            },
+            job_requirements=(
+                "负责中文招聘需求梳理、简历初筛、面试协同与候选人推进。"
+                "优先考虑具备招聘、面试、入职和数据分析经验的候选人。需要 4 年以上相关经验。"
+            ),
+            preferred_skills="薪酬, 员工关系, 沟通",
+            preferred_city="上海",
+        )
+
+        self.assertGreaterEqual(result["overall_score"], 80)
+        self.assertEqual(result["recommended_status"], "Advance")
+        self.assertIn("招聘", result["matched_skills"])
+        self.assertIn("面试", result["matched_skills"])
+        self.assertIn("AI 启发式匹配分", result["summary"])
+        self.assertTrue(any("上海" in item for item in result["strengths"]))
+
 
 if __name__ == "__main__":
     unittest.main()

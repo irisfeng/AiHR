@@ -49,6 +49,51 @@ class ResumeIntakeTests(unittest.TestCase):
             self.assertIn("张三", parsed_names)
             self.assertIn("李四", parsed_names)
 
+    def test_preserves_chinese_file_names_and_fields(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            archive_path = Path(temp_dir) / "中文简历包.zip"
+            with ZipFile(archive_path, "w") as bundle:
+                bundle.writestr(
+                    "王小雨_招聘经理.docx",
+                    self._build_custom_docx_bytes(
+                        [
+                            "王小雨",
+                            "wangxiaoyu@demo.com",
+                            "13800138011",
+                            "现居：上海",
+                            "6年招聘、面试、入职和数据分析经验。",
+                        ]
+                    ),
+                )
+                bundle.writestr(
+                    "李娜_招聘运营.txt",
+                    "\n".join(
+                        [
+                            "李娜",
+                            "lina@demo.com",
+                            "13800138012",
+                            "现居：杭州",
+                            "4年招聘运营、面试协调、入职办理经验，熟悉招聘、面试、入职、沟通。",
+                        ]
+                    ),
+                )
+                bundle.writestr("供应商说明.xlsx", b"binary")
+
+            items = extract_resume_archive(archive_path)
+            parsed_items = {item["file_name"]: item for item in items if item["status"] == "Parsed"}
+            unsupported_items = [item for item in items if item["status"] == "Unsupported"]
+
+            self.assertIn("王小雨_招聘经理.docx", parsed_items)
+            self.assertIn("李娜_招聘运营.txt", parsed_items)
+            self.assertEqual(parsed_items["王小雨_招聘经理.docx"]["parsed_resume"]["name"], "王小雨")
+            self.assertEqual(parsed_items["王小雨_招聘经理.docx"]["parsed_resume"]["city"], "上海")
+            self.assertEqual(parsed_items["王小雨_招聘经理.docx"]["parsed_resume"]["years_of_experience"], 6)
+            self.assertEqual(parsed_items["李娜_招聘运营.txt"]["parsed_resume"]["name"], "李娜")
+            self.assertEqual(parsed_items["李娜_招聘运营.txt"]["parsed_resume"]["city"], "杭州")
+            self.assertEqual(parsed_items["李娜_招聘运营.txt"]["parsed_resume"]["years_of_experience"], 4)
+            self.assertEqual(len(unsupported_items), 1)
+            self.assertEqual(unsupported_items[0]["file_name"], "供应商说明.xlsx")
+
     @staticmethod
     def _build_docx_bytes() -> bytes:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -56,6 +101,29 @@ class ResumeIntakeTests(unittest.TestCase):
             with ZipFile(docx_path, "w") as archive:
                 archive.writestr("[Content_Types].xml", "")
                 archive.writestr("word/document.xml", DOCX_XML)
+            return docx_path.read_bytes()
+
+    @staticmethod
+    def _build_custom_docx_bytes(paragraphs: list[str]) -> bytes:
+        xml = [
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+            "  <w:body>",
+        ]
+        for paragraph in paragraphs:
+            content = (
+                paragraph.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            )
+            xml.append(f"    <w:p><w:r><w:t>{content}</w:t></w:r></w:p>")
+        xml += ["  </w:body>", "</w:document>"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            docx_path = Path(temp_dir) / "resume.docx"
+            with ZipFile(docx_path, "w") as archive:
+                archive.writestr("[Content_Types].xml", "")
+                archive.writestr("word/document.xml", "\n".join(xml))
             return docx_path.read_bytes()
 
 

@@ -1546,12 +1546,6 @@ def _get_job_requirements(applicant) -> str:
             "aihr_must_have_skills",
         )
         or "",
-        frappe.db.get_value(
-            "Job Requisition",
-            getattr(job_opening, "job_requisition", None),
-            "aihr_nice_to_have_skills",
-        )
-        or "",
     ]
     return "\n".join(part for part in requirement_parts if part).strip()
 
