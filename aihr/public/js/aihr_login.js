@@ -1,5 +1,5 @@
 (function () {
-  const DESK_ENTRY = "/app/aihr-hiring-hq";
+  const DESK_ENTRY = "/app";
   const LOGIN_VARIANTS = {
     ".for-login": {
       title: "欢迎回到 AIHR",

@@ -3,13 +3,24 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import unquote
 
+from aihr.setup.access import WORKSPACE_ROLE_BINDINGS, preferred_workspace_for_roles
 from aihr.setup.workspace import (
     INTERVIEWER_WORKSPACE_LABEL,
+    INTERVIEWER_WORKSPACE_NAME,
     MANAGER_WORKSPACE_LABEL,
+    MANAGER_WORKSPACE_NAME,
+    WORKSPACE_NAME,
     WORKSPACE_BLOCK_LABEL,
 )
 
-AIHR_DESK_HOME = "/app/aihr-hiring-hq"
+WORKSPACE_ROUTES = {
+    WORKSPACE_NAME: "/app/aihr-hiring-hq",
+    MANAGER_WORKSPACE_NAME: "/app/aihr-manager-review",
+    INTERVIEWER_WORKSPACE_NAME: "/app/aihr-interview-desk",
+}
+
+ROUTE_TO_WORKSPACE = {route: workspace for workspace, route in WORKSPACE_ROUTES.items()}
+AIHR_DESK_HOME = WORKSPACE_ROUTES[WORKSPACE_NAME]
 PORTAL_PATH_REDIRECTS = {
     "/me": AIHR_DESK_HOME,
     "/my-account": AIHR_DESK_HOME,
@@ -52,19 +63,28 @@ def normalize_route_history_route(route: str | None) -> str | None:
     return LEGACY_ROUTE_HISTORY_MAP.get(normalized, normalized)
 
 
-def normalize_desk_path(path: str | None, user: str | None = None) -> str | None:
+def normalize_desk_path(
+    path: str | None,
+    user: str | None = None,
+    role_names: list[str] | tuple[str, ...] | set[str] | None = None,
+) -> str | None:
     normalized = unquote((path or "").strip())
+    preferred_home = get_preferred_desk_home(user, role_names)
     if not normalized:
         return None
     if normalized == "/" and user and user != "Guest":
-        return AIHR_DESK_HOME
+        return preferred_home
     if normalized == "/app":
-        return AIHR_DESK_HOME
+        return preferred_home
     if normalized in PORTAL_PATH_REDIRECTS:
-        return PORTAL_PATH_REDIRECTS[normalized]
+        return preferred_home
     if any(normalized.startswith(prefix) for prefix in DESK_PREFIX_REDIRECTS):
-        return AIHR_DESK_HOME
-    return WORKSPACE_PATH_REDIRECTS.get(normalized, normalized)
+        return preferred_home
+
+    redirected = WORKSPACE_PATH_REDIRECTS.get(normalized, normalized)
+    if user and user != "Guest" and not user_can_access_workspace_path(user, redirected, role_names):
+        return preferred_home
+    return redirected
 
 
 def is_probably_logged_in_system_user(user: str | None, cookies: dict[str, Any] | None = None) -> bool:
@@ -77,6 +97,43 @@ def is_probably_logged_in_system_user(user: str | None, cookies: dict[str, Any] 
         "",
         "Guest",
     }
+
+
+def get_preferred_desk_home(user: str | None, role_names: list[str] | tuple[str, ...] | set[str] | None = None) -> str:
+    workspace_name = get_preferred_workspace_name(user, role_names)
+    return WORKSPACE_ROUTES.get(workspace_name, AIHR_DESK_HOME)
+
+
+def get_preferred_workspace_name(user: str | None, role_names: list[str] | tuple[str, ...] | set[str] | None = None) -> str:
+    return preferred_workspace_for_roles(role_names or _get_role_names(user))
+
+
+def user_can_access_workspace_path(
+    user: str | None,
+    path: str | None,
+    role_names: list[str] | tuple[str, ...] | set[str] | None = None,
+) -> bool:
+    normalized = (path or "").strip()
+    workspace_name = ROUTE_TO_WORKSPACE.get(normalized)
+    if not workspace_name:
+        return True
+
+    allowed_roles = set(WORKSPACE_ROLE_BINDINGS.get(workspace_name, []))
+    current_roles = set(role_names or _get_role_names(user))
+    if not allowed_roles:
+        return True
+    return bool(allowed_roles & current_roles)
+
+
+def _get_role_names(user: str | None) -> list[str]:
+    try:
+        import frappe
+    except ModuleNotFoundError:
+        return []
+
+    if not user or user == "Guest":
+        return []
+    return list(frappe.get_roles(user))
 
 
 def should_hide_route_history(route: str | None) -> bool:

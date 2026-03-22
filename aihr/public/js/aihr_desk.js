@@ -5,6 +5,11 @@
     "AIHR 用人经理中心": "/app/aihr-manager-review",
     "AIHR 面试协同中心": "/app/aihr-interview-desk",
   };
+  const AIHR_WORKSPACE_ACCESS = {
+    "AIHR 招聘总览": ["HR User", "HR Manager", "System Manager"],
+    "AIHR 用人经理中心": ["AIHR Hiring Manager", "HR Manager", "System Manager"],
+    "AIHR 面试协同中心": ["Interviewer", "HR User", "HR Manager", "System Manager"],
+  };
   const AIHR_WORKSPACE_LINKS = [
     {
       label: "AIHR 招聘总览",
@@ -215,12 +220,12 @@
 
   function getDirectWorkspaceUrl(params) {
     if (!params) {
-      return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
+      return getPreferredDeskEntry();
     }
 
     const route = Array.isArray(params) ? params.flat() : [params];
     if (!route.length) {
-      return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
+      return getPreferredDeskEntry();
     }
 
     if (route[0] === "Workspaces" && AIHR_WORKSPACE_ROUTES[route[1]]) {
@@ -241,13 +246,44 @@
 
     const normalized = decodeURIComponent(String(url).trim());
     if (normalized === "/app") {
-      return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
+      return getPreferredDeskEntry();
     }
     if (AIHR_BLOCKED_DESK_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+      return getPreferredDeskEntry();
+    }
+    const redirected = AIHR_WORKSPACE_PATH_REDIRECTS[normalized] || null;
+    const current = redirected || normalized;
+    return userCanAccessPath(current) ? redirected : getPreferredDeskEntry();
+  }
+
+  function getPreferredDeskEntry() {
+    const roles = getCurrentUserRoles();
+    if (roles.has("HR Manager") || roles.has("HR User") || roles.has("System Manager")) {
       return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
     }
+    if (roles.has("AIHR Hiring Manager")) {
+      return AIHR_WORKSPACE_ROUTES["AIHR 用人经理中心"];
+    }
+    if (roles.has("Interviewer")) {
+      return AIHR_WORKSPACE_ROUTES["AIHR 面试协同中心"];
+    }
+    return AIHR_WORKSPACE_ROUTES["AIHR 招聘总览"];
+  }
 
-    return AIHR_WORKSPACE_PATH_REDIRECTS[normalized] || null;
+  function getCurrentUserRoles() {
+    const roles = frappe?.boot?.user?.roles || frappe?.user_roles || [];
+    return new Set(Array.isArray(roles) ? roles : []);
+  }
+
+  function userCanAccessPath(path) {
+    const routeEntry = Object.entries(AIHR_WORKSPACE_ROUTES).find(([, route]) => route === path);
+    if (!routeEntry) {
+      return true;
+    }
+    const [label] = routeEntry;
+    const allowedRoles = AIHR_WORKSPACE_ACCESS[label] || [];
+    const roles = getCurrentUserRoles();
+    return allowedRoles.some((role) => roles.has(role));
   }
 
   function sanitizeSearchHistory() {

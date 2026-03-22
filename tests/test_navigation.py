@@ -2,6 +2,7 @@ import unittest
 
 from aihr.setup.navigation import (
     AIHR_DESK_HOME,
+    get_preferred_desk_home,
     is_probably_logged_in_system_user,
     normalize_desk_path,
     normalize_route_history_route,
@@ -38,6 +39,15 @@ class NavigationHistoryTests(unittest.TestCase):
         self.assertEqual(normalize_desk_path("/app/aihr-招聘总览"), AIHR_DESK_HOME)
         self.assertEqual(normalize_desk_path("/app/aihr-用人经理中心"), "/app/aihr-manager-review")
         self.assertEqual(normalize_desk_path("/", "Guest"), "/")
+
+    def test_manager_like_roles_redirect_to_manager_workspace(self):
+        roles = ["AIHR Hiring Manager", "Employee"]
+        self.assertEqual(get_preferred_desk_home("delivery.manager@aihr.local", roles), "/app/aihr-manager-review")
+        self.assertEqual(normalize_desk_path("/app", "delivery.manager@aihr.local", roles), "/app/aihr-manager-review")
+        self.assertEqual(
+            normalize_desk_path("/app/aihr-hiring-hq", "delivery.manager@aihr.local", roles),
+            "/app/aihr-manager-review",
+        )
 
     def test_legacy_workspace_labels_are_normalized(self):
         self.assertEqual(normalize_workspace_label("AIHR 招聘作战台"), "AIHR 招聘总览")
