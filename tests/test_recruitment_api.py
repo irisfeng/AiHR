@@ -45,6 +45,25 @@ class RecruitmentApiTests(unittest.TestCase):
         self.assertIn("招聘, 面试, 入职, 数据分析", requirements)
         self.assertNotIn("薪酬, 员工关系, 沟通", requirements)
 
+    def test_fallback_resume_email_prefers_phone(self):
+        value = recruitment._fallback_resume_email(
+            file_name="买鑫实施运维工程师.pdf",
+            applicant_name="买鑫",
+            phone="15710031625",
+            batch_reference="RIB-202603220001",
+        )
+        self.assertEqual(value, "resume-15710031625@aihr.local")
+
+    def test_fallback_resume_email_generates_hash_when_phone_missing(self):
+        value = recruitment._fallback_resume_email(
+            file_name="曹杨宜简历.pdf",
+            applicant_name="曹杨宜",
+            phone="",
+            batch_reference="RIB-202603220001",
+        )
+        self.assertTrue(value.startswith("resume-"))
+        self.assertTrue(value.endswith("@aihr.local"))
+
 
 if __name__ == "__main__":
     unittest.main()

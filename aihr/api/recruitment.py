@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from hashlib import sha1
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +23,12 @@ from aihr.services.recruitment_ops import (
     split_person_name,
 )
 from aihr.services.resume_intake import extract_resume_archive, summarize_archive_results
-from aihr.services.resume_parser import extract_text_from_file, parse_resume_text
+from aihr.services.resume_parser import (
+    extract_text_from_file,
+    infer_name_from_file_name,
+    is_valid_name,
+    parse_resume_text,
+)
 from aihr.services.screening import build_agency_brief, screen_candidate
 
 try:
@@ -86,6 +92,7 @@ def create_resume_intake_batch(
     archive_summary = summarize_archive_results(archive_items)
 
     imported_applicants: list[str] = []
+    runtime_failed_count = 0
     log_lines = [
         f"批次：{batch_id}",
         f"岗位：{opening.job_title or opening.name}",
@@ -98,25 +105,31 @@ def create_resume_intake_batch(
             log_lines.append(f"{item['file_name']}：{item['status']} - {item.get('reason') or '未处理'}")
             continue
 
-        applicant, created = _upsert_job_applicant_from_archive_item(
-            opening=opening,
-            batch_reference=batch_id,
-            supplier_name=supplier_name or "",
-            source_channel=source_channel or "供应商线下包",
-            archive_item=item,
-        )
-        imported_applicants.append(applicant.name)
+        try:
+            applicant, created = _upsert_job_applicant_from_archive_item(
+                opening=opening,
+                batch_reference=batch_id,
+                supplier_name=supplier_name or "",
+                source_channel=source_channel or "供应商线下包",
+                archive_item=item,
+            )
+            imported_applicants.append(applicant.name)
 
-        if int(auto_run_screening or 0):
-            screen_job_applicant(applicant.name, save=1)
-            screening_label = "已生成 AI 摘要"
-        else:
-            screening_label = "已入库，待手动生成 AI 摘要"
+            if int(auto_run_screening or 0):
+                screen_job_applicant(applicant.name, save=1)
+                screening_label = "已生成 AI 摘要"
+            else:
+                screening_label = "已入库，待手动生成 AI 摘要"
 
-        action_label = "新建候选人" if created else "更新候选人"
-        log_lines.append(f"{item['file_name']}：{action_label} -> {applicant.name}，{screening_label}")
+            action_label = "新建候选人" if created else "更新候选人"
+            log_lines.append(f"{item['file_name']}：{action_label} -> {applicant.name}，{screening_label}")
+        except Exception as exc:
+            runtime_failed_count += 1
+            log_lines.append(f"{item['file_name']}：Failed - {frappe.safe_decode(str(exc))}")
 
-    if len(imported_applicants) and not archive_summary["failed_count"] and not archive_summary["unsupported_count"]:
+    failed_count = archive_summary["failed_count"] + runtime_failed_count
+
+    if len(imported_applicants) and not failed_count and not archive_summary["unsupported_count"]:
         status = "Completed"
     elif len(imported_applicants):
         status = "Completed With Issues"
@@ -130,7 +143,7 @@ def create_resume_intake_batch(
             "total_files": archive_summary["total_files"],
             "imported_count": len(imported_applicants),
             "skipped_count": archive_summary["unsupported_count"],
-            "failed_count": archive_summary["failed_count"],
+            "failed_count": failed_count,
         },
         "job_applicants": imported_applicants,
         "intake_log": "\n".join(log_lines),
@@ -1605,7 +1618,14 @@ def _upsert_job_applicant_from_archive_item(
     parsed_resume = archive_item.get("parsed_resume") or {}
     email = (parsed_resume.get("emails") or [""])[0]
     phone = (parsed_resume.get("phones") or [""])[0]
-    applicant_name = parsed_resume.get("name") or Path(archive_item["file_name"]).stem
+    parsed_name = str(parsed_resume.get("name") or "").strip()
+    applicant_name = (
+        parsed_name
+        if is_valid_name(parsed_name)
+        else infer_name_from_file_name(archive_item["file_name"]) or Path(archive_item["file_name"]).stem
+    )
+    if not email:
+        email = _fallback_resume_email(archive_item["file_name"], applicant_name, phone, batch_reference)
 
     applicant = _find_existing_job_applicant(opening.name, email, phone, applicant_name)
     created = applicant is None
@@ -1644,6 +1664,15 @@ def _upsert_job_applicant_from_archive_item(
         frappe.flags.aihr_skip_auto_screening = False
 
     return applicant, created
+
+
+def _fallback_resume_email(file_name: str, applicant_name: str, phone: str, batch_reference: str) -> str:
+    if phone:
+        return f"resume-{phone}@aihr.local"
+
+    basis = f"{file_name}|{applicant_name}|{batch_reference}"
+    digest = sha1(basis.encode("utf-8", errors="ignore")).hexdigest()[:12]
+    return f"resume-{digest}@aihr.local"
 
 
 def _find_existing_job_applicant(job_opening: str, email: str, phone: str, applicant_name: str):
