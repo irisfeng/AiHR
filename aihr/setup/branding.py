@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from aihr.setup.access import preferred_workspace_for_roles
 from aihr.setup.workspace import AIHR_WORKSPACE_LABELS, AIHR_WORKSPACE_NAMES, WORKSPACE_NAME
 
 AIHR_APP_NAME = "AIHR"
@@ -64,6 +65,16 @@ def should_reset_default_workspace(default_workspace: str | None) -> bool:
     return normalized in STANDARD_WORKSPACES_TO_REPLACE or not normalized
 
 
+def should_align_preferred_workspace(default_workspace: str | None, preferred_workspace: str | None) -> bool:
+    current = (default_workspace or "").strip()
+    preferred = (preferred_workspace or "").strip()
+    if not preferred:
+        return False
+    if should_reset_default_workspace(current):
+        return True
+    return is_aihr_workspace(current) and current != preferred
+
+
 def should_reset_default_app(default_app: str | None) -> bool:
     normalized = (default_app or "").strip().lower()
     return normalized in STANDARD_APPS_TO_REPLACE or not normalized
@@ -120,8 +131,10 @@ def _ensure_user_defaults() -> None:
     )
     for user in users:
         updates: dict[str, str] = {}
-        if should_reset_default_workspace(user.get("default_workspace")):
-            updates["default_workspace"] = WORKSPACE_NAME
+        role_names = frappe.get_all("Has Role", filters={"parent": user.get("name")}, pluck="role")
+        preferred_workspace = preferred_workspace_for_roles(role_names)
+        if should_align_preferred_workspace(user.get("default_workspace"), preferred_workspace):
+            updates["default_workspace"] = preferred_workspace or WORKSPACE_NAME
         if should_reset_default_app(user.get("default_app")):
             updates["default_app"] = AIHR_APP_SLUG
         if should_reset_language(user.get("language")):
