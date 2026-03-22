@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import io
 import json
 import os
@@ -9,6 +10,7 @@ from dataclasses import dataclass
 from hashlib import sha1
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import urlsplit
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from zipfile import ZipFile
@@ -191,12 +193,27 @@ def _markdown_to_text(markdown: str) -> str:
 
 
 def _upload_file(upload_url: str, file_path: Path) -> None:
-    request = Request(upload_url, data=file_path.read_bytes(), method="PUT")
-    request.add_header("Content-Length", str(file_path.stat().st_size))
-    with urlopen(request, timeout=_get_request_timeout()) as response:
+    target = urlsplit(upload_url)
+    connection_class = http.client.HTTPSConnection if target.scheme == "https" else http.client.HTTPConnection
+    path = target.path or "/"
+    if target.query:
+        path = f"{path}?{target.query}"
+
+    connection = connection_class(target.netloc, timeout=_get_request_timeout())
+    try:
+        with file_path.open("rb") as handle:
+            body = handle.read()
+        headers = {
+            "Content-Length": str(file_path.stat().st_size),
+        }
+        connection.request("PUT", path, body=body, headers=headers)
+        response = connection.getresponse()
         status = getattr(response, "status", 200)
+        response_body = response.read().decode("utf-8", errors="ignore")
         if status >= 400:
-            raise MinerUError(f"上传 {file_path.name} 到 MinerU 失败，状态码 {status}。")
+            raise MinerUError(f"上传 {file_path.name} 到 MinerU 失败，状态码 {status}。{response_body[:300]}")
+    finally:
+        connection.close()
 
 
 def _request_json(method: str, url: str, payload: dict | None = None) -> dict:
