@@ -1,6 +1,6 @@
 import unittest
 
-from aihr.setup.departments import AIHR_DEPARTMENT_NAMES
+from aihr.setup.departments import AIHR_DEPARTMENT_NAMES, DEMO_MANAGER_ACCOUNTS
 
 
 class DepartmentSetupTests(unittest.TestCase):
@@ -19,6 +19,12 @@ class DepartmentSetupTests(unittest.TestCase):
                 "产研中心",
             ],
         )
+
+    def test_demo_manager_accounts_cover_hr_and_delivery_centers(self):
+        account_map = {item["user_id"]: item for item in DEMO_MANAGER_ACCOUNTS}
+        self.assertEqual(account_map["manager.demo@aihr.local"]["department_name"], "人事部")
+        self.assertEqual(account_map["delivery.manager@aihr.local"]["department_name"], "交付中心")
+        self.assertEqual(account_map["delivery.manager@aihr.local"]["designation_name"], "交付中心经理")
 
 
 if __name__ == "__main__":

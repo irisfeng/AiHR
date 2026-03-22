@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from aihr.setup.departments import DEMO_MANAGER_ACCOUNTS
 from aihr.setup.workspace import (
     INTERVIEWER_WORKSPACE_NAME,
     MANAGER_WORKSPACE_NAME,
@@ -135,12 +136,19 @@ def _ensure_doctype_permissions() -> None:
 def _assign_demo_manager_role() -> None:
     import frappe
 
-    user_id = "manager.demo@aihr.local"
-    if not frappe.db.exists("User", user_id):
-        return
+    for profile in DEMO_MANAGER_ACCOUNTS:
+        user_id = profile["user_id"]
+        if not frappe.db.exists("User", user_id):
+            continue
 
-    user = frappe.get_doc("User", user_id)
-    existing_roles = {row.role for row in getattr(user, "roles", []) if getattr(row, "role", None)}
-    if AIHR_HIRING_MANAGER_ROLE not in existing_roles:
-        user.append("roles", {"role": AIHR_HIRING_MANAGER_ROLE})
-        user.save(ignore_permissions=True)
+        user = frappe.get_doc("User", user_id)
+        existing_roles = {row.role for row in getattr(user, "roles", []) if getattr(row, "role", None)}
+        updated = False
+
+        for role_name in (AIHR_HIRING_MANAGER_ROLE, "Employee"):
+            if role_name not in existing_roles:
+                user.append("roles", {"role": role_name})
+                updated = True
+
+        if updated:
+            user.save(ignore_permissions=True)
