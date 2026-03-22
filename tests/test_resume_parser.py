@@ -1,4 +1,7 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from aihr.services.resume_parser import infer_name_from_file_name, parse_resume_text
 
@@ -103,6 +106,21 @@ class ResumeParserTests(unittest.TestCase):
 
         for skill in ["linux", "docker", "k8s", "nginx", "mysql", "redis", "ansible", "shell", "实施", "交付", "运维", "监控", "技术支持"]:
             self.assertIn(skill, result["skills"])
+
+    @patch("aihr.services.resume_parser.extract_pdf_text_with_mineru")
+    def test_extract_text_from_pdf_prefers_mineru(self, mock_extract):
+        from aihr.services.resume_parser import extract_text_from_file
+
+        mock_extract.return_value = "赵雷\n13800138033\n现居：深圳\n5年实施交付经验"
+
+        with TemporaryDirectory() as temp_dir:
+            pdf_path = Path(temp_dir) / "resume.pdf"
+            pdf_path.write_bytes(b"%PDF-1.4 fake")
+
+            text = extract_text_from_file(pdf_path)
+
+        self.assertIn("赵雷", text)
+        mock_extract.assert_called_once()
 
 
 if __name__ == "__main__":

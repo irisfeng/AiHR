@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -93,6 +94,30 @@ class ResumeIntakeTests(unittest.TestCase):
             self.assertEqual(parsed_items["李娜_招聘运营.txt"]["parsed_resume"]["years_of_experience"], 4)
             self.assertEqual(len(unsupported_items), 1)
             self.assertEqual(unsupported_items[0]["file_name"], "供应商说明.xlsx")
+
+    @patch("aihr.services.resume_intake.extract_pdf_texts_with_mineru")
+    @patch("aihr.services.resume_intake.mineru_is_enabled", return_value=True)
+    def test_uses_mineru_for_pdf_files_in_zip_bundle(self, _enabled, mock_batch_extract):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            archive_path = Path(temp_dir) / "pdf_bundle.zip"
+            with ZipFile(archive_path, "w") as bundle:
+                bundle.writestr("张三_运维工程师.pdf", b"%PDF-1.4 fake")
+
+            mock_batch_extract.side_effect = lambda file_paths: {
+                str(file_paths[0]): type(
+                    "MinerUParsedFile",
+                    (),
+                    {"text": "张三\n13800138022\n现居：上海\n6年运维经验\n熟悉 Linux、Docker、K8S。"},
+                )()
+            }
+
+            items = extract_resume_archive(archive_path)
+            parsed_items = [item for item in items if item["status"] == "Parsed"]
+
+            self.assertEqual(len(parsed_items), 1)
+            self.assertEqual(parsed_items[0]["parser_engine"], "MinerU API")
+            self.assertEqual(parsed_items[0]["parsed_resume"]["name"], "张三")
+            self.assertIn("linux", parsed_items[0]["parsed_resume"]["skills"])
 
     @staticmethod
     def _build_docx_bytes() -> bytes:

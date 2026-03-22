@@ -8,6 +8,8 @@ from typing import Iterable
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
+from aihr.services.mineru_api import MinerUError, extract_pdf_text_with_mineru
+
 DEFAULT_SKILL_LEXICON = {
     "python",
     "java",
@@ -141,17 +143,19 @@ LOCATION_STOPWORDS = (
 )
 
 
-def extract_text_from_file(file_path: str | Path) -> str:
+def extract_text_from_file(file_path: str | Path, prefer_remote: bool = True) -> str:
     path = Path(file_path)
     suffix = path.suffix.lower()
     if suffix == ".pdf":
-        try:
-            from pypdf import PdfReader
-        except Exception:
-            return ""
+        if prefer_remote:
+            try:
+                remote_text = extract_pdf_text_with_mineru(path)
+            except MinerUError:
+                remote_text = ""
+            if remote_text.strip():
+                return remote_text.strip()
 
-        reader = PdfReader(str(path))
-        return "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+        return extract_text_from_pdf_locally(path)
 
     if suffix == ".docx":
         return extract_text_from_docx(path)
@@ -160,6 +164,17 @@ def extract_text_from_file(file_path: str | Path) -> str:
         return extract_text_from_legacy_doc(path)
 
     return path.read_text(encoding="utf-8", errors="ignore").strip()
+
+
+def extract_text_from_pdf_locally(file_path: str | Path) -> str:
+    path = Path(file_path)
+    try:
+        from pypdf import PdfReader
+    except Exception:
+        return ""
+
+    reader = PdfReader(str(path))
+    return "\n".join(page.extract_text() or "" for page in reader.pages).strip()
 
 
 def extract_text_from_docx(file_path: str | Path) -> str:

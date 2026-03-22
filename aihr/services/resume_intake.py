@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Iterable
 from zipfile import ZipFile
 
+from aihr.services.mineru_api import MinerUError, extract_pdf_texts_with_mineru, mineru_is_enabled
 from aihr.services.resume_parser import extract_text_from_file, parse_resume_text
 
 SUPPORTED_RESUME_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
@@ -20,6 +21,7 @@ class ResumeArchiveItem:
     reason: str = ""
     resume_text: str = ""
     parsed_resume: dict[str, Any] | None = None
+    parser_engine: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -40,6 +42,7 @@ def extract_resume_archive(
 
     extracted_items: list[ResumeArchiveItem] = []
     used_names: set[str] = set()
+    pending_supported: list[tuple[ResumeArchiveItem, Path]] = []
 
     with TemporaryDirectory(prefix="aihr_resume_bundle_") as temp_dir:
         temp_root = Path(temp_dir)
@@ -70,30 +73,55 @@ def extract_resume_archive(
 
                 temp_path = temp_root / safe_name
                 temp_path.write_bytes(member_bytes)
-                resume_text = extract_text_from_file(temp_path)
-
-                if not resume_text.strip():
-                    extracted_items.append(
+                pending_supported.append(
+                    (
                         ResumeArchiveItem(
                             file_name=safe_name,
                             file_extension=suffix,
                             content=member_bytes,
-                            status="Failed",
-                            reason="文件未能提取出可用文本，请人工补充或转成可复制文本。",
-                        )
-                    )
-                    continue
-
-                extracted_items.append(
-                    ResumeArchiveItem(
-                        file_name=safe_name,
-                        file_extension=suffix,
-                        content=member_bytes,
-                        status="Parsed",
-                        resume_text=resume_text,
-                        parsed_resume=parse_resume_text(resume_text, skill_lexicon=skill_lexicon),
+                            status="Pending",
+                        ),
+                        temp_path,
                     )
                 )
+
+        mineru_results: dict[str, Any] = {}
+        if mineru_is_enabled():
+            pdf_paths = [temp_path for item, temp_path in pending_supported if item.file_extension == ".pdf"]
+            if pdf_paths:
+                try:
+                    mineru_results = extract_pdf_texts_with_mineru(pdf_paths)
+                except MinerUError:
+                    mineru_results = {}
+
+        for item, temp_path in pending_supported:
+            resume_text = ""
+            parser_engine = ""
+
+            if item.file_extension == ".pdf":
+                mineru_result = mineru_results.get(str(temp_path))
+                if mineru_result and mineru_result.text.strip():
+                    resume_text = mineru_result.text
+                    parser_engine = "MinerU API"
+                else:
+                    resume_text = extract_text_from_file(temp_path, prefer_remote=False)
+                    parser_engine = "Local PDF"
+            else:
+                resume_text = extract_text_from_file(temp_path)
+                parser_engine = temp_path.suffix.upper().lstrip(".")
+
+            if not resume_text.strip():
+                item.status = "Failed"
+                item.reason = "文件未能提取出可用文本，请人工补充或转成可复制文本。"
+                item.parser_engine = parser_engine
+                extracted_items.append(item)
+                continue
+
+            item.status = "Parsed"
+            item.resume_text = resume_text
+            item.parsed_resume = parse_resume_text(resume_text, skill_lexicon=skill_lexicon)
+            item.parser_engine = parser_engine
+            extracted_items.append(item)
 
     return [item.to_dict() for item in extracted_items]
 
