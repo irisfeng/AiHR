@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u7528\u4eba\u7ecf\u7406\u6982\u89c8</b></span><div class=\\\"text-muted\\\">\u7ecf\u7406\u53ea\u770b\u5f85\u590d\u6838\u5019\u9009\u4eba\u3001\u9762\u8bd5\u5b89\u6392\u548c Offer \u51b3\u7b56\uff0c\u4e0d\u518d\u5148\u7ffb PDF \u7b80\u5386\u3002</div>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5f85\u7ecf\u7406\u590d\u6838\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5019\u9009\u4eba\u6c60\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u9762\u8bd5\u5b89\u6392\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Offer \u7ba1\u7406\", \"col\": 3}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u7ecf\u7406\u5173\u6ce8\u6a21\u5757</b></span><div class=\\\"text-muted\\\">\u56f4\u7ed5\u201c\u662f\u5426\u63a8\u8fdb\u201d\u505a\u5224\u65ad\uff0c\u907f\u514d\u7ecf\u7406\u9677\u5165\u65e5\u5e38\u5f55\u5165\u3002</div>\", \"col\": 12}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u5019\u9009\u4eba\u590d\u6838\", \"col\": 6}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u9762\u8bd5\u4e0e\u5f55\u7528\", \"col\": 6}}]",
+ "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u7528\u4eba\u7ecf\u7406\u6982\u89c8</b></span><div class=\\\"text-muted\\\">\u5148\u53d1\u8d77\u5c97\u4f4d\u9700\u6c42\uff0c\u518d\u770b AI \u521d\u7b5b\u3001\u9762\u8bd5\u5b89\u6392\u548c Offer \u51b3\u7b56\uff0c\u4e0d\u518d\u5148\u7ffb PDF \u7b80\u5386\u3002</div>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5c97\u4f4d\u9700\u6c42\u5355\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5f85\u7ecf\u7406\u590d\u6838\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5019\u9009\u4eba\u6c60\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u9762\u8bd5\u5b89\u6392\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Offer \u7ba1\u7406\", \"col\": 3}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u7ecf\u7406\u5173\u6ce8\u6a21\u5757</b></span><div class=\\\"text-muted\\\">\u4ece\u5c97\u4f4d\u9700\u6c42\u5f00\u59cb\uff0c\u518d\u56f4\u7ed5\u201c\u662f\u5426\u63a8\u8fdb\u201d\u505a\u5224\u65ad\uff0c\u907f\u514d\u7ecf\u7406\u9677\u5165\u65e5\u5e38\u5f55\u5165\u3002</div>\", \"col\": 12}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u5019\u9009\u4eba\u590d\u6838\", \"col\": 6}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u9762\u8bd5\u4e0e\u5f55\u7528\", \"col\": 6}}]",
  "creation": "2026-03-21 08:49:34.585088",
  "custom_blocks": [],
  "docstatus": 0,
@@ -12,6 +12,36 @@
  "is_hidden": 0,
  "label": "AIHR \u7528\u4eba\u7ecf\u7406\u4e2d\u5fc3",
  "links": [
+  {
+   "description": "\u5148\u53d1\u8d77\u5e76\u67e5\u770b\u5c97\u4f4d\u9700\u6c42\u5355\uff0c\u518d\u8fdb\u5165\u5019\u9009\u4eba\u590d\u6838\u548c\u9762\u8bd5\u63a8\u8fdb\u3002",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5c97\u4f4d\u9700\u6c42",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5c97\u4f4d\u9700\u6c42\u5355",
+   "link_count": 0,
+   "link_to": "Job Requisition",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u62db\u8058\u4e2d\u5c97\u4f4d",
+   "link_count": 0,
+   "link_to": "Job Opening",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
   {
    "description": "\u5148\u770b AI \u6458\u8981\uff0c\u518d\u505a\u7ecf\u7406\u5224\u65ad\u548c\u63a8\u8fdb\u51b3\u7b56\u3002",
    "hidden": 0,
@@ -38,16 +68,6 @@
    "label": "\u5019\u9009\u4eba\u6c60",
    "link_count": 0,
    "link_to": "Job Applicant",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "\u62db\u8058\u4e2d\u5c97\u4f4d",
-   "link_count": 0,
-   "link_to": "Job Opening",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -93,7 +113,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-23 10:21:42.959110",
+ "modified": "2026-03-23 21:32:50.374980",
  "modified_by": "Administrator",
  "module": "Recruitment Intelligence",
  "name": "AIHR \u7528\u4eba\u7ecf\u7406\u4e2d\u5fc3",
@@ -115,6 +135,15 @@
  ],
  "sequence_id": 0.0,
  "shortcuts": [
+  {
+   "color": "#0f766e",
+   "doc_view": "List",
+   "format": "{} \u6761\u9700\u6c42",
+   "label": "\u5c97\u4f4d\u9700\u6c42\u5355",
+   "link_to": "Job Requisition",
+   "stats_filter": "{\"docstatus\": [\"!=\", \"2\"]}",
+   "type": "DocType"
+  },
   {
    "color": "#ea580c",
    "doc_view": "List",
