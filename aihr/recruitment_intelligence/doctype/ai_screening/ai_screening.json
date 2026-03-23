@@ -8,6 +8,7 @@
  "document_type": "Document",
  "engine": "InnoDB",
  "field_order": [
+  "aihr_review_snapshot_html",
   "screening_details_section",
   "job_applicant",
   "job_opening",
@@ -25,6 +26,11 @@
   "screening_payload_json"
  ],
  "fields": [
+  {
+   "fieldname": "aihr_review_snapshot_html",
+   "fieldtype": "HTML",
+   "label": "AI 决策视图"
+  },
   {
    "fieldname": "screening_details_section",
    "fieldtype": "Section Break",
@@ -158,4 +164,3 @@
  "sort_order": "DESC",
  "track_changes": 1
 }
-

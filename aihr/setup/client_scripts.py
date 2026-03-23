@@ -63,4 +63,9 @@ CLIENT_SCRIPTS = [
         "dt": "Employee Onboarding",
         "script_path": "public/js/employee_onboarding.js",
     },
+    {
+        "name": "AIHR AI Screening Form",
+        "dt": "AI Screening",
+        "script_path": "public/js/ai_screening.js",
+    },
 ]

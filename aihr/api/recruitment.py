@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import json
+import mimetypes
 from hashlib import sha1
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from aihr.services.ai_assistant import (
     build_interviewer_pack_with_llm,
@@ -504,6 +507,128 @@ def get_job_applicant_snapshot(job_applicant: str) -> dict[str, Any]:
         if screening
         else None,
     }
+
+
+@whitelist()
+def get_ai_screening_snapshot(ai_screening: str) -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for fetching AI screening snapshots.")
+
+    screening_doc = frappe.get_doc("AI Screening", ai_screening)
+    _assert_doc_permission(screening_doc, "read")
+
+    applicant = frappe.get_doc("Job Applicant", screening_doc.job_applicant) if getattr(screening_doc, "job_applicant", None) else None
+    if applicant:
+        _assert_doc_permission(applicant, "read")
+
+    opening = _get_job_opening_doc(getattr(screening_doc, "job_opening", None) or getattr(applicant, "job_title", None))
+    if opening:
+        _assert_doc_permission(opening, "read")
+
+    requisition = (
+        frappe.get_doc("Job Requisition", opening.job_requisition)
+        if opening and getattr(opening, "job_requisition", None)
+        else None
+    )
+    if requisition:
+        _assert_doc_permission(requisition, "read")
+
+    parsed_resume = _parse_json_blob(getattr(screening_doc, "parsed_resume_json", ""))
+    screening_payload = _parse_json_blob(getattr(screening_doc, "screening_payload_json", ""))
+    resume_preview = _build_resume_preview_payload(applicant, getattr(applicant, "aihr_resume_text", "") if applicant else "")
+    if resume_preview.get("file_url"):
+        resume_preview["preview_url"] = f"/api/method/aihr.api.recruitment.preview_resume_file?ai_screening={quote(screening_doc.name, safe='')}"
+        resume_preview["can_embed"] = bool(resume_preview.get("kind") == "pdf")
+
+    return {
+        "screening": {
+            "name": screening_doc.name,
+            "status": screening_doc.status,
+            "status_label": _candidate_status_label(screening_doc.status),
+            "overall_score": screening_doc.overall_score,
+            "matched_skills": _csv_to_list(screening_doc.matched_skills),
+            "missing_skills": _csv_to_list(screening_doc.missing_skills),
+            "ai_summary": screening_doc.ai_summary,
+            "strengths": _lines_to_list(screening_doc.strengths),
+            "risks": _lines_to_list(screening_doc.risks),
+            "suggested_questions": _lines_to_list(screening_doc.suggested_questions),
+        },
+        "job_applicant": {
+            "name": applicant.name,
+            "route": frappe.utils.get_url_to_form("Job Applicant", applicant.name),
+            "applicant_name": applicant.applicant_name,
+            "email_id": applicant.email_id,
+            "phone_number": applicant.phone_number,
+            "candidate_city": getattr(applicant, "aihr_candidate_city", "") or parsed_resume.get("city", ""),
+            "years_of_experience": getattr(applicant, "aihr_years_experience", 0) or parsed_resume.get("years_of_experience", 0),
+            "next_action": getattr(applicant, "aihr_next_action", ""),
+            "resume_file_name": getattr(applicant, "aihr_resume_file_name", ""),
+            "resume_supplier": getattr(applicant, "aihr_resume_source_supplier", ""),
+            "resume_source_channel": getattr(applicant, "aihr_resume_source_channel", ""),
+            "resume_parse_status": getattr(applicant, "aihr_resume_parse_status", ""),
+        }
+        if applicant
+        else None,
+        "job_opening": {
+            "name": opening.name,
+            "route": frappe.utils.get_url_to_form("Job Opening", opening.name),
+            "job_title": build_opening_display_title(opening),
+            "department": getattr(opening, "department", ""),
+        }
+        if opening
+        else None,
+        "job_requisition": {
+            "name": requisition.name,
+            "route": frappe.utils.get_url_to_form("Job Requisition", requisition.name),
+            "work_city": getattr(requisition, "aihr_work_city", ""),
+            "must_have_skills": _csv_to_list(getattr(requisition, "aihr_must_have_skills", "")),
+            "nice_to_have_skills": _csv_to_list(getattr(requisition, "aihr_nice_to_have_skills", "")),
+        }
+        if requisition
+        else None,
+        "resume_preview": resume_preview,
+        "parsed_resume": parsed_resume,
+        "screening_payload": screening_payload,
+    }
+
+
+@whitelist()
+def preview_resume_file(ai_screening: str):
+    if not frappe:
+        raise RuntimeError("Frappe is required for previewing resume files.")
+
+    from frappe.core.doctype.file.utils import find_file_by_url
+
+    screening_doc = frappe.get_doc("AI Screening", ai_screening)
+    _assert_doc_permission(screening_doc, "read")
+
+    applicant = frappe.get_doc("Job Applicant", screening_doc.job_applicant) if getattr(screening_doc, "job_applicant", None) else None
+    if not applicant:
+        frappe.throw("当前 AI 初筛未关联候选人，无法预览原始简历。")
+    _assert_doc_permission(applicant, "read")
+
+    file_url = getattr(applicant, "resume_attachment", "") or ""
+    if not file_url:
+        frappe.throw("当前候选人没有原始简历附件。")
+
+    file_doc = find_file_by_url(file_url)
+    if not file_doc:
+        raise frappe.PermissionError
+
+    file_name = getattr(file_doc, "file_name", "") or Path(file_url).name
+    file_content = file_doc.get_content()
+    mime_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+
+    frappe.local.response.filename = file_name
+    frappe.local.response.filecontent = file_content
+
+    if mime_type == "application/pdf":
+        frappe.local.response.type = "pdf"
+        return
+
+    frappe.local.response.type = "download"
+    frappe.local.response.display_content_as = "inline"
+    frappe.local.response.content_type = mime_type
 
 
 @whitelist()
@@ -1744,6 +1869,49 @@ def _resolve_file_url_to_path(file_url: str) -> Path:
         if candidate.exists():
             return candidate
     raise FileNotFoundError(f"File not found for URL: {file_url}")
+
+
+def _build_resume_preview_payload(applicant, resume_text: str) -> dict[str, Any]:
+    file_url = getattr(applicant, "resume_attachment", "") if applicant else ""
+    file_name = getattr(applicant, "aihr_resume_file_name", "") if applicant else ""
+    if not file_name and file_url:
+        file_name = Path(file_url).name
+    suffix = Path(file_name or file_url or "").suffix.lower()
+    kind = "pdf" if suffix == ".pdf" else ("document" if suffix else "text")
+    preview_url = _build_authorized_file_url(file_url)
+    return {
+        "file_url": file_url,
+        "preview_url": preview_url,
+        "file_name": file_name,
+        "kind": kind,
+        "can_embed": bool(preview_url and suffix == ".pdf"),
+        "text_excerpt": _excerpt_text(resume_text, 1200),
+    }
+
+
+def _build_authorized_file_url(file_url: str) -> str:
+    if not file_url:
+        return ""
+    if file_url.startswith("/private/files/"):
+        return f"/api/method/download_file?file_url={quote(file_url, safe='')}"
+    return file_url
+
+
+def _parse_json_blob(value: str | None) -> dict[str, Any]:
+    if not value:
+        return {}
+    try:
+        parsed = frappe.parse_json(value) if frappe else json.loads(value)
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _excerpt_text(value: str | None, limit: int = 600) -> str:
+    text = " ".join((value or "").split())
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit].rstrip()}..."
 
 
 def _upsert_job_applicant_from_archive_item(

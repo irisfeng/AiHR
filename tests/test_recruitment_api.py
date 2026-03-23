@@ -64,6 +64,26 @@ class RecruitmentApiTests(unittest.TestCase):
         self.assertTrue(value.startswith("resume-"))
         self.assertTrue(value.endswith("@aihr.local"))
 
+    def test_build_resume_preview_payload_marks_pdf_as_embeddable(self):
+        applicant = SimpleNamespace(
+            resume_attachment="/private/files/交付工程师.pdf",
+            aihr_resume_file_name="交付工程师.pdf",
+        )
+        payload = recruitment._build_resume_preview_payload(applicant, "这是候选人的中文简历正文")
+        self.assertEqual(payload["kind"], "pdf")
+        self.assertTrue(payload["can_embed"])
+        self.assertEqual(payload["file_name"], "交付工程师.pdf")
+        self.assertEqual(
+            payload["preview_url"],
+            "/api/method/download_file?file_url=%2Fprivate%2Ffiles%2F%E4%BA%A4%E4%BB%98%E5%B7%A5%E7%A8%8B%E5%B8%88.pdf",
+        )
+
+    def test_build_authorized_file_url_keeps_public_files_unchanged(self):
+        self.assertEqual(recruitment._build_authorized_file_url("/files/demo.pdf"), "/files/demo.pdf")
+
+    def test_parse_json_blob_returns_empty_dict_on_invalid_payload(self):
+        self.assertEqual(recruitment._parse_json_blob("{bad-json"), {})
+
 
 if __name__ == "__main__":
     unittest.main()
