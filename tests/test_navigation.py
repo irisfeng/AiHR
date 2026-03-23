@@ -1,7 +1,10 @@
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from aihr.setup.navigation import (
     AIHR_DESK_HOME,
+    _redirect_if_unauthorized_doc_route,
     get_preferred_desk_home,
     is_probably_logged_in_system_user,
     normalize_desk_path,
@@ -48,6 +51,47 @@ class NavigationHistoryTests(unittest.TestCase):
             normalize_desk_path("/app/aihr-hiring-hq", "delivery.manager@aihr.local", roles),
             "/app/aihr-manager-review",
         )
+
+    def test_unauthorized_manager_doc_route_redirects_back_to_manager_home(self):
+        fake_db = SimpleNamespace(exists=lambda doctype, name: doctype == "AI Screening" and name == "AI-SCR-00025")
+        fake_frappe = SimpleNamespace(
+            db=fake_db,
+            has_permission=lambda *args, **kwargs: False,
+            get_roles=lambda user: ["AIHR Hiring Manager", "Employee"],
+        )
+        fake_permissions = SimpleNamespace(_is_scoped_hiring_manager=lambda user: True)
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "frappe": fake_frappe,
+                "aihr.permissions": fake_permissions,
+            },
+        ):
+            self.assertEqual(
+                _redirect_if_unauthorized_doc_route("/app/ai-screening/AI-SCR-00025", "delivery.manager@aihr.local"),
+                "/app/aihr-manager-review",
+            )
+
+    def test_authorized_manager_doc_route_is_not_redirected(self):
+        fake_db = SimpleNamespace(exists=lambda doctype, name: doctype == "AI Screening" and name == "AI-SCR-00028")
+        fake_frappe = SimpleNamespace(
+            db=fake_db,
+            has_permission=lambda *args, **kwargs: True,
+            get_roles=lambda user: ["AIHR Hiring Manager", "Employee"],
+        )
+        fake_permissions = SimpleNamespace(_is_scoped_hiring_manager=lambda user: True)
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "frappe": fake_frappe,
+                "aihr.permissions": fake_permissions,
+            },
+        ):
+            self.assertIsNone(
+                _redirect_if_unauthorized_doc_route("/app/ai-screening/AI-SCR-00028", "delivery.manager@aihr.local")
+            )
 
     def test_legacy_workspace_labels_are_normalized(self):
         self.assertEqual(normalize_workspace_label("AIHR 招聘作战台"), "AIHR 招聘总览")

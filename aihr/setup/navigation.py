@@ -40,6 +40,15 @@ WORKSPACE_PATH_REDIRECTS = {
     "/app/aihr-用人经理中心": "/app/aihr-manager-review",
     "/app/aihr-面试协同中心": "/app/aihr-interview-desk",
 }
+SCOPED_DOC_ROUTE_MAP = {
+    "job-requisition": "Job Requisition",
+    "job-opening": "Job Opening",
+    "job-applicant": "Job Applicant",
+    "ai-screening": "AI Screening",
+    "interview": "Interview",
+    "interview-feedback": "Interview Feedback",
+    "job-offer": "Job Offer",
+}
 
 LEGACY_ROUTE_HISTORY_MAP = {
     f"Workspaces/{source}": f"Workspaces/{target}"
@@ -232,6 +241,39 @@ def redirect_desk_root() -> None:
     ):
         raise RequestRedirect(AIHR_DESK_HOME)
 
+    denied_target = _redirect_if_unauthorized_doc_route(getattr(request, "path", ""), current_user)
+    if denied_target and denied_target != request.path:
+        raise RequestRedirect(denied_target)
+
     target = normalize_desk_path(getattr(request, "path", ""), current_user)
     if target and target != request.path:
         raise RequestRedirect(target)
+
+
+def _redirect_if_unauthorized_doc_route(path: str | None, user: str | None) -> str | None:
+    try:
+        import frappe
+        from aihr.permissions import _is_scoped_hiring_manager
+    except ModuleNotFoundError:
+        return None
+
+    if not user or user == "Guest" or not _is_scoped_hiring_manager(user):
+        return None
+
+    normalized = unquote((path or "").strip()).strip("/")
+    if not normalized.startswith("app/"):
+        return None
+
+    parts = normalized.split("/")
+    if len(parts) < 3:
+        return None
+
+    _, route_slug, docname = parts[:3]
+    doctype = SCOPED_DOC_ROUTE_MAP.get(route_slug)
+    if not doctype or not docname or not frappe.db.exists(doctype, docname):
+        return None
+
+    if frappe.has_permission(doctype, ptype="read", doc=docname, user=user):
+        return None
+
+    return get_preferred_desk_home(user)
