@@ -161,27 +161,28 @@ def _workspace_content() -> list[dict]:
         {
             "type": "header",
             "data": {
-                "text": '<span class="h4"><b>高频操作</b></span><div class="text-muted">围绕招聘主链路推进，而不是在 ERP 模块里寻找入口。</div>',
+                "text": '<span class="h4"><b>招聘 MVP 高频操作</b></span><div class="text-muted">只保留岗位、简历导入、AI 初筛、面试和 Offer 这些核心动作。</div>',
                 "col": 12,
             },
         },
         {"type": "shortcut", "data": {"shortcut_name": "新建岗位需求", "col": 2}},
         {"type": "shortcut", "data": {"shortcut_name": "招聘中岗位", "col": 2}},
+        {"type": "shortcut", "data": {"shortcut_name": "导入简历包", "col": 2}},
         {"type": "shortcut", "data": {"shortcut_name": "候选人池", "col": 2}},
-        {"type": "shortcut", "data": {"shortcut_name": "AI 摘要池", "col": 2}},
+        {"type": "shortcut", "data": {"shortcut_name": "AI 初筛", "col": 2}},
         {"type": "shortcut", "data": {"shortcut_name": "面试安排", "col": 2}},
         {"type": "shortcut", "data": {"shortcut_name": "Offer 管理", "col": 2}},
         {"type": "spacer", "data": {"col": 12}},
         {
             "type": "header",
             "data": {
-                "text": '<span class="h4"><b>功能模块</b></span><div class="text-muted">从需求、筛选、面试到录用，全部围绕 AIHR 招聘总览展开。</div>',
+                "text": '<span class="h4"><b>核心模块</b></span><div class="text-muted">围绕一条招聘主线推进，不把 MVP 做成完整 HRMS。</div>',
                 "col": 12,
             },
         },
-        {"type": "card", "data": {"card_name": "招聘执行", "col": 4}},
-        {"type": "card", "data": {"card_name": "面试与录用", "col": 4}},
-        {"type": "card", "data": {"card_name": "组织与主数据", "col": 4}},
+        {"type": "card", "data": {"card_name": "岗位与渠道", "col": 4}},
+        {"type": "card", "data": {"card_name": "导入与初筛", "col": 4}},
+        {"type": "card", "data": {"card_name": "面试与 Offer", "col": 4}},
     ]
 
 
@@ -213,6 +214,15 @@ def _workspace_shortcuts() -> list[dict]:
             "color": "#ea580c",
         },
         {
+            "label": "导入简历包",
+            "type": "DocType",
+            "link_to": "Job Opening",
+            "doc_view": "List",
+            "format": "{} 个导入入口",
+            "stats_filter": json.dumps({"status": ["=", "Open"]}, ensure_ascii=False),
+            "color": "#0f766e",
+        },
+        {
             "label": "候选人池",
             "type": "DocType",
             "link_to": "Job Applicant",
@@ -222,11 +232,11 @@ def _workspace_shortcuts() -> list[dict]:
             "color": "#2563eb",
         },
         {
-            "label": "AI 摘要池",
+            "label": "AI 初筛",
             "type": "DocType",
             "link_to": "AI Screening",
             "doc_view": "List",
-            "format": "{} 条摘要",
+            "format": "{} 条初筛",
             "stats_filter": json.dumps({"docstatus": ["!=", "2"]}, ensure_ascii=False),
             "color": "#7c3aed",
         },
@@ -255,31 +265,27 @@ def _workspace_links() -> list[dict]:
     return [
         {
             "type": "Card Break",
-            "label": "招聘执行",
-            "description": "从岗位需求、岗位开启到候选人 AI 初筛的主链路。",
+            "label": "岗位与渠道",
+            "description": "收口岗位需求、补充 JD，并把需求转成实际招聘中的岗位。",
         },
         {"type": "Link", "label": "岗位需求单", "link_type": "DocType", "link_to": "Job Requisition"},
+        {"type": "Link", "label": "招聘中岗位", "link_type": "DocType", "link_to": "Job Opening"},
+        {
+            "type": "Card Break",
+            "label": "导入与初筛",
+            "description": "把供应商 ZIP 简历包导入系统，自动解析、建档并产出 AI 初筛摘要。",
+        },
         {"type": "Link", "label": "招聘中岗位", "link_type": "DocType", "link_to": "Job Opening"},
         {"type": "Link", "label": "候选人档案", "link_type": "DocType", "link_to": "Job Applicant"},
         {"type": "Link", "label": "AI 初筛结果", "link_type": "DocType", "link_to": "AI Screening"},
         {
             "type": "Card Break",
-            "label": "面试与录用",
-            "description": "面试安排、反馈回收和 Offer 推进。",
+            "label": "面试与 Offer",
+            "description": "聚焦面试安排、反馈回收和 Offer 推进，先不扩到入职与薪酬。",
         },
         {"type": "Link", "label": "面试安排", "link_type": "DocType", "link_to": "Interview"},
         {"type": "Link", "label": "面试反馈", "link_type": "DocType", "link_to": "Interview Feedback"},
         {"type": "Link", "label": "Offer 管理", "link_type": "DocType", "link_to": "Job Offer"},
-        {"type": "Link", "label": "录用信", "link_type": "DocType", "link_to": "Appointment Letter"},
-        {
-            "type": "Card Break",
-            "label": "组织与主数据",
-            "description": "用于维护招聘协同所需的组织、入职和基础主数据。",
-        },
-        {"type": "Link", "label": "入职交接", "link_type": "DocType", "link_to": "Employee Onboarding"},
-        {"type": "Link", "label": "员工档案", "link_type": "DocType", "link_to": "Employee"},
-        {"type": "Link", "label": "部门", "link_type": "DocType", "link_to": "Department"},
-        {"type": "Link", "label": "用户", "link_type": "DocType", "link_to": "User"},
     ]
 
 
@@ -288,14 +294,14 @@ def _manager_workspace_content() -> list[dict]:
         {
             "type": "header",
             "data": {
-                "text": '<span class="h4"><b>用人经理概览</b></span><div class="text-muted">经理只看最需要判断的候选人、面试和 Offer，不再先翻 PDF 简历。</div>',
+                "text": '<span class="h4"><b>用人经理概览</b></span><div class="text-muted">经理只看待复核候选人、面试安排和 Offer 决策，不再先翻 PDF 简历。</div>',
                 "col": 12,
             },
         },
         {"type": "shortcut", "data": {"shortcut_name": "待经理复核", "col": 3}},
         {"type": "shortcut", "data": {"shortcut_name": "候选人池", "col": 3}},
         {"type": "shortcut", "data": {"shortcut_name": "面试安排", "col": 3}},
-        {"type": "shortcut", "data": {"shortcut_name": "Offer 协同", "col": 3}},
+        {"type": "shortcut", "data": {"shortcut_name": "Offer 管理", "col": 3}},
         {"type": "spacer", "data": {"col": 12}},
         {
             "type": "header",
@@ -339,7 +345,7 @@ def _manager_workspace_shortcuts() -> list[dict]:
             "color": "#ca8a04",
         },
         {
-            "label": "Offer 协同",
+            "label": "Offer 管理",
             "type": "DocType",
             "link_to": "Job Offer",
             "doc_view": "List",
@@ -363,11 +369,11 @@ def _manager_workspace_links() -> list[dict]:
         {
             "type": "Card Break",
             "label": "面试与录用",
-            "description": "聚焦面试反馈、Offer 决策与录用推进。",
+            "description": "聚焦面试反馈、Offer 决策与录用结果留痕。",
         },
         {"type": "Link", "label": "面试安排", "link_type": "DocType", "link_to": "Interview"},
         {"type": "Link", "label": "面试反馈", "link_type": "DocType", "link_to": "Interview Feedback"},
-        {"type": "Link", "label": "Offer 协同", "link_type": "DocType", "link_to": "Job Offer"},
+        {"type": "Link", "label": "Offer 管理", "link_type": "DocType", "link_to": "Job Offer"},
     ]
 
 
@@ -453,5 +459,5 @@ def _interviewer_workspace_links() -> list[dict]:
             "description": "在面试前快速掌握候选人背景、风险点和追问建议。",
         },
         {"type": "Link", "label": "候选人摘要", "link_type": "DocType", "link_to": "Job Applicant"},
-        {"type": "Link", "label": "AI 摘要池", "link_type": "DocType", "link_to": "AI Screening"},
+        {"type": "Link", "label": "AI 初筛结果", "link_type": "DocType", "link_to": "AI Screening"},
     ]

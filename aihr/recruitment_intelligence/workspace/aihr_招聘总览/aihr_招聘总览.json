@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"AIHR \u62db\u8058\u603b\u89c8\", \"col\": 12}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u9ad8\u9891\u64cd\u4f5c</b></span><div class=\\\"text-muted\\\">\u56f4\u7ed5\u62db\u8058\u4e3b\u94fe\u8def\u63a8\u8fdb\uff0c\u800c\u4e0d\u662f\u5728 ERP \u6a21\u5757\u91cc\u5bfb\u627e\u5165\u53e3\u3002</div>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u65b0\u5efa\u5c97\u4f4d\u9700\u6c42\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u62db\u8058\u4e2d\u5c97\u4f4d\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5019\u9009\u4eba\u6c60\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"AI \u6458\u8981\u6c60\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u9762\u8bd5\u5b89\u6392\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Offer \u7ba1\u7406\", \"col\": 2}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u529f\u80fd\u6a21\u5757</b></span><div class=\\\"text-muted\\\">\u4ece\u9700\u6c42\u3001\u7b5b\u9009\u3001\u9762\u8bd5\u5230\u5f55\u7528\uff0c\u5168\u90e8\u56f4\u7ed5 AIHR \u62db\u8058\u603b\u89c8\u5c55\u5f00\u3002</div>\", \"col\": 12}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u62db\u8058\u6267\u884c\", \"col\": 4}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u9762\u8bd5\u4e0e\u5f55\u7528\", \"col\": 4}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u7ec4\u7ec7\u4e0e\u4e3b\u6570\u636e\", \"col\": 4}}]",
+ "content": "[{\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"AIHR \u62db\u8058\u603b\u89c8\", \"col\": 12}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u62db\u8058 MVP \u9ad8\u9891\u64cd\u4f5c</b></span><div class=\\\"text-muted\\\">\u53ea\u4fdd\u7559\u5c97\u4f4d\u3001\u7b80\u5386\u5bfc\u5165\u3001AI \u521d\u7b5b\u3001\u9762\u8bd5\u548c Offer \u8fd9\u4e9b\u6838\u5fc3\u52a8\u4f5c\u3002</div>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u65b0\u5efa\u5c97\u4f4d\u9700\u6c42\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u62db\u8058\u4e2d\u5c97\u4f4d\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5bfc\u5165\u7b80\u5386\u5305\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5019\u9009\u4eba\u6c60\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"AI \u521d\u7b5b\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u9762\u8bd5\u5b89\u6392\", \"col\": 2}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Offer \u7ba1\u7406\", \"col\": 2}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u6838\u5fc3\u6a21\u5757</b></span><div class=\\\"text-muted\\\">\u56f4\u7ed5\u4e00\u6761\u62db\u8058\u4e3b\u7ebf\u63a8\u8fdb\uff0c\u4e0d\u628a MVP \u505a\u6210\u5b8c\u6574 HRMS\u3002</div>\", \"col\": 12}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u5c97\u4f4d\u4e0e\u6e20\u9053\", \"col\": 4}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u5bfc\u5165\u4e0e\u521d\u7b5b\", \"col\": 4}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u9762\u8bd5\u4e0e Offer\", \"col\": 4}}]",
  "creation": "2026-03-20 22:50:56.072294",
  "custom_blocks": [
   {
@@ -18,10 +18,10 @@
  "label": "AIHR \u62db\u8058\u603b\u89c8",
  "links": [
   {
-   "description": "\u4ece\u5c97\u4f4d\u9700\u6c42\u3001\u5c97\u4f4d\u5f00\u542f\u5230\u5019\u9009\u4eba AI \u521d\u7b5b\u7684\u4e3b\u94fe\u8def\u3002",
+   "description": "\u6536\u53e3\u5c97\u4f4d\u9700\u6c42\u3001\u8865\u5145 JD\uff0c\u5e76\u628a\u9700\u6c42\u8f6c\u6210\u5b9e\u9645\u62db\u8058\u4e2d\u7684\u5c97\u4f4d\u3002",
    "hidden": 0,
    "is_query_report": 0,
-   "label": "\u62db\u8058\u6267\u884c",
+   "label": "\u5c97\u4f4d\u4e0e\u6e20\u9053",
    "link_count": 0,
    "link_type": "DocType",
    "onboard": 0,
@@ -36,6 +36,26 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u62db\u8058\u4e2d\u5c97\u4f4d",
+   "link_count": 0,
+   "link_to": "Job Opening",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "description": "\u628a\u4f9b\u5e94\u5546 ZIP \u7b80\u5386\u5305\u5bfc\u5165\u7cfb\u7edf\uff0c\u81ea\u52a8\u89e3\u6790\u3001\u5efa\u6863\u5e76\u4ea7\u51fa AI \u521d\u7b5b\u6458\u8981\u3002",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "\u5bfc\u5165\u4e0e\u521d\u7b5b",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
    "hidden": 0,
@@ -68,10 +88,10 @@
    "type": "Link"
   },
   {
-   "description": "\u9762\u8bd5\u5b89\u6392\u3001\u53cd\u9988\u56de\u6536\u548c Offer \u63a8\u8fdb\u3002",
+   "description": "\u805a\u7126\u9762\u8bd5\u5b89\u6392\u3001\u53cd\u9988\u56de\u6536\u548c Offer \u63a8\u8fdb\uff0c\u5148\u4e0d\u6269\u5230\u5165\u804c\u4e0e\u85aa\u916c\u3002",
    "hidden": 0,
    "is_query_report": 0,
-   "label": "\u9762\u8bd5\u4e0e\u5f55\u7528",
+   "label": "\u9762\u8bd5\u4e0e Offer",
    "link_count": 0,
    "link_type": "DocType",
    "onboard": 0,
@@ -106,69 +126,9 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "\u5f55\u7528\u4fe1",
-   "link_count": 0,
-   "link_to": "Appointment Letter",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "description": "\u7528\u4e8e\u7ef4\u62a4\u62db\u8058\u534f\u540c\u6240\u9700\u7684\u7ec4\u7ec7\u3001\u5165\u804c\u548c\u57fa\u7840\u4e3b\u6570\u636e\u3002",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "\u7ec4\u7ec7\u4e0e\u4e3b\u6570\u636e",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "\u5165\u804c\u4ea4\u63a5",
-   "link_count": 0,
-   "link_to": "Employee Onboarding",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "\u5458\u5de5\u6863\u6848",
-   "link_count": 0,
-   "link_to": "Employee",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "\u90e8\u95e8",
-   "link_count": 0,
-   "link_to": "Department",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "\u7528\u6237",
-   "link_count": 0,
-   "link_to": "User",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
   }
  ],
- "modified": "2026-03-21 09:48:03.725703",
+ "modified": "2026-03-23 10:21:42.922094",
  "modified_by": "Administrator",
  "module": "Recruitment Intelligence",
  "name": "AIHR \u62db\u8058\u603b\u89c8",
@@ -177,7 +137,17 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [],
+ "roles": [
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
  "sequence_id": 0.0,
  "shortcuts": [
   {
@@ -197,6 +167,15 @@
    "type": "DocType"
   },
   {
+   "color": "#0f766e",
+   "doc_view": "List",
+   "format": "{} \u4e2a\u5bfc\u5165\u5165\u53e3",
+   "label": "\u5bfc\u5165\u7b80\u5386\u5305",
+   "link_to": "Job Opening",
+   "stats_filter": "{\"status\": [\"=\", \"Open\"]}",
+   "type": "DocType"
+  },
+  {
    "color": "#2563eb",
    "doc_view": "List",
    "format": "{} \u5019\u9009\u4eba",
@@ -208,8 +187,8 @@
   {
    "color": "#7c3aed",
    "doc_view": "List",
-   "format": "{} \u6761\u6458\u8981",
-   "label": "AI \u6458\u8981\u6c60",
+   "format": "{} \u6761\u521d\u7b5b",
+   "label": "AI \u521d\u7b5b",
    "link_to": "AI Screening",
    "stats_filter": "{\"docstatus\": [\"!=\", \"2\"]}",
    "type": "DocType"

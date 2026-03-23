@@ -42,9 +42,6 @@
       if (action === "new-requisition") {
         frappe.new_doc("Job Requisition");
       }
-      if (action === "new-applicant") {
-        frappe.new_doc("Job Applicant");
-      }
       if (action === "open-openings") {
         window.location.assign("/app/job-opening");
       }
@@ -79,7 +76,7 @@
     const focus = snapshot.hero || {};
     regions.heroFocus.textContent = focus.title || "招聘主链路已接入";
     regions.heroSubtitle.textContent =
-      focus.subtitle || "从岗位需求到候选人摘要，当前数据已在一个页面中汇总。";
+      focus.subtitle || "从岗位需求、ZIP 简历导入到 AI 初筛，当前数据已在一个页面中汇总。";
   }
 
   function renderMetrics(metrics) {
@@ -146,7 +143,7 @@
 
             <div class="aihr-hq-opening__footer">
               <div class="aihr-hq-opening__meta">下一步：${escapeHtml(opening.next_action || "待确认")}</div>
-              <a class="aihr-hq-inline-link" href="${escapeHtml(opening.route)}">进入岗位</a>
+              <a class="aihr-hq-inline-link" href="${escapeHtml(opening.route)}">进入岗位并导入</a>
             </div>
           </article>
         `

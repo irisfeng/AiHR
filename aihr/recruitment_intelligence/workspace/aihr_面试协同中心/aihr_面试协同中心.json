@@ -65,7 +65,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "AI \u6458\u8981\u6c60",
+   "label": "AI \u521d\u7b5b\u7ed3\u679c",
    "link_count": 0,
    "link_to": "AI Screening",
    "link_type": "DocType",
@@ -73,7 +73,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-21 09:48:03.787036",
+ "modified": "2026-03-23 10:21:42.972141",
  "modified_by": "Administrator",
  "module": "Recruitment Intelligence",
  "name": "AIHR \u9762\u8bd5\u534f\u540c\u4e2d\u5fc3",
@@ -82,7 +82,20 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [],
+ "roles": [
+  {
+   "role": "Interviewer"
+  },
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
  "sequence_id": 0.0,
  "shortcuts": [
   {

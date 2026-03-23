@@ -14,7 +14,8 @@
 1. `HR / 面试官 / 用人经理` 的页面入口已经分成 3 个中心，且 **Workspace 已按角色绑定**，不再是公开入口。
 2. `Job Requisition` 已启用正式 Workflow，岗位需求已从“按钮推进”升级为制度化审批流。
 3. `用人经理` 角色已经正式落地为 `AIHR Hiring Manager`，并已增加“仅看本人部门”的行级限制。
-4. 当前最值得优先补的是：`岗位范围进一步细化 + Offer / 入职审批流 + 导入结果页`。
+4. 当前最值得优先补的是：`岗位范围进一步细化 + ZIP 导入结果页 + 经理复核体验`。
+5. `Employee Onboarding / Employee / Payroll` 当前保留为后续扩展能力，但不再作为招聘 MVP 的主入口和近期重点。
 
 当前组织口径已确认采用 **9 个一级平级部门**，不做父子部门：
 
@@ -40,7 +41,7 @@
 |---|---|---|---|
 | 系统管理员 | 环境、用户、参数、权限、异常处理 | 已存在 | 保留 `System Manager` |
 | HR 执行 / 招聘专员 | 岗位维护、简历导入、AI 初筛、推进流程 | 已存在 | 对应 `HR User` |
-| HR 负责人 | 统筹招聘、录用、入职、员工建档 | 已存在 | 对应 `HR Manager` |
+| HR 负责人 | 统筹招聘、录用和招聘运营节奏 | 已存在 | 对应 `HR Manager` |
 | 用人经理 / 部门经理 | 提岗位需求、复核 AI 摘要、面试决策、Offer 决策 | 已落地为系统角色 | 补部门/岗位范围控制 |
 | 面试官 | 查看资料包、填写反馈、参与复核 | 部分存在 | 使用 `Interviewer` 并收口权限 |
 
@@ -137,7 +138,8 @@
 
 仍然缺的是：
 
-- Offer 与入职交接的正式 Workflow
+- 经理复核与导入结果的可视化收口
+- Offer 阶段更轻量的结果留痕体验
 
 #### 问题 3：Workflow 只落了一半
 
@@ -149,7 +151,7 @@
 - `Interview`：无 Workflow
 - `Interview Feedback`：无 Workflow
 - `Job Offer`：无 Workflow
-- `Employee Onboarding`：无 Workflow
+- `Employee Onboarding`：无 Workflow，且当前不作为招聘 MVP 一期重点
 
 这意味着现在是：
 
@@ -171,7 +173,7 @@
 | Interview | 读写 | 读写 | 只读本人岗位 | 读写本人面试 | 全量 |
 | Interview Feedback | 只读/协同 | 只读/决策 | 只读/决策 | 创建/提交本人反馈 | 全量 |
 | Job Offer | 创建/推进 | 审批 | 只读/确认 | 无 | 全量 |
-| Employee Onboarding | 推进 | 审批 | 只读 | 无 | 全量 |
+| Employee Onboarding | 二期范围 | 二期范围 | 无 | 无 | 全量 |
 | Employee | 维护 | 维护 | 无 | 无 | 全量 |
 
 ### 1.5 后续权限落地计划
@@ -187,13 +189,12 @@
 
 #### P1
 
-- 建 `Workflow`
-  - Offer 审批流
-  - 入职交接确认流
 - 增加 `User Permission`
   - 按 `Department`
   - 按 `Job Opening`
   - 按 `Interviewer`
+- 做正式的 ZIP 导入结果页
+- 把经理复核页做成更轻的一页式决策界面
 
 #### P2
 
@@ -233,8 +234,7 @@ flowchart TD
     T --> U{"是否发 Offer?"}
     U -- 否 --> V["结束或保留人才库"]
     U -- 是 --> W["创建 Job Offer"]
-    W --> X["薪酬交接 / 入职交接"]
-    X --> Y["Employee Onboarding"]
+    W --> X["Offer 结果留痕"]
     Y --> Z["创建 Employee 主档"]
 ```
 
@@ -252,7 +252,7 @@ flowchart TD
 - `面试协同`
 - `面试反馈`
 - `Offer`
-- `入职交接`
+- `入职交接（后续范围）`
 - `Employee 主档创建`
 
 ### 2.2 当前仍不够“制度化”的环节
@@ -355,7 +355,7 @@ flowchart TD
 - 经理待复核提醒
 - 面试官待反馈提醒
 - Offer 待审批提醒
-- 入职待交接提醒
+- 高优先级候选人提醒
 
 ### P2 后续增强
 
@@ -397,7 +397,7 @@ flowchart TD
 ## 4. 最建议的后续执行顺序
 
 1. 先补权限，不要先堆更多页面
-2. 先补岗位需求审批流，再补 Offer 审批流
+2. 先补岗位需求审批流，再收口经理复核体验
 3. 先补 ZIP 导入结果页，再做供应商质量看板
 4. 经理视角先做“只看我相关”，再谈更复杂的数据权限
 

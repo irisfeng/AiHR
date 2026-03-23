@@ -3,7 +3,7 @@
   const LOGIN_VARIANTS = {
     ".for-login": {
       title: "欢迎回到 AIHR",
-      subtitle: "进入岗位需求、候选人推进、面试协同与录用交接，保持招聘主线清晰可见。",
+      subtitle: "进入岗位需求、简历导入、AI 初筛、面试协同与 Offer 管理，保持招聘主线清晰可见。",
     },
     ".for-email-login": {
       title: "使用邮箱登录",
@@ -94,7 +94,7 @@
       <div class="aihr-login-kicker">AIHR 招聘后台</div>
       <div class="aihr-login-hero-title">让招聘流程回到清晰、稳定的工作界面。</div>
       <div class="aihr-login-hero-copy">
-        岗位需求、候选人、面试反馈、Offer 与入职交接统一收口在同一条主线上。
+        岗位需求、ZIP 简历导入、AI 初筛、面试反馈与 Offer 管理统一收口在同一条主线上。
         AI 负责整理、摘要与提醒，人保留判断与确认。
       </div>
       <div class="aihr-login-points">
@@ -112,7 +112,7 @@
         </div>
         <div class="aihr-login-metric">
           <div class="aihr-login-metric-label">协同方式</div>
-          <div class="aihr-login-metric-value">AI 摘要与协同</div>
+          <div class="aihr-login-metric-value">AI 初筛与协同</div>
         </div>
       </div>
     `;

@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u7528\u4eba\u7ecf\u7406\u6982\u89c8</b></span><div class=\\\"text-muted\\\">\u7ecf\u7406\u53ea\u770b\u6700\u9700\u8981\u5224\u65ad\u7684\u5019\u9009\u4eba\u3001\u9762\u8bd5\u548c Offer\uff0c\u4e0d\u518d\u5148\u7ffb PDF \u7b80\u5386\u3002</div>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5f85\u7ecf\u7406\u590d\u6838\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5019\u9009\u4eba\u6c60\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u9762\u8bd5\u5b89\u6392\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Offer \u534f\u540c\", \"col\": 3}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u7ecf\u7406\u5173\u6ce8\u6a21\u5757</b></span><div class=\\\"text-muted\\\">\u56f4\u7ed5\u201c\u662f\u5426\u63a8\u8fdb\u201d\u505a\u5224\u65ad\uff0c\u907f\u514d\u7ecf\u7406\u9677\u5165\u65e5\u5e38\u5f55\u5165\u3002</div>\", \"col\": 12}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u5019\u9009\u4eba\u590d\u6838\", \"col\": 6}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u9762\u8bd5\u4e0e\u5f55\u7528\", \"col\": 6}}]",
+ "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u7528\u4eba\u7ecf\u7406\u6982\u89c8</b></span><div class=\\\"text-muted\\\">\u7ecf\u7406\u53ea\u770b\u5f85\u590d\u6838\u5019\u9009\u4eba\u3001\u9762\u8bd5\u5b89\u6392\u548c Offer \u51b3\u7b56\uff0c\u4e0d\u518d\u5148\u7ffb PDF \u7b80\u5386\u3002</div>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5f85\u7ecf\u7406\u590d\u6838\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u5019\u9009\u4eba\u6c60\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\u9762\u8bd5\u5b89\u6392\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Offer \u7ba1\u7406\", \"col\": 3}}, {\"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\u7ecf\u7406\u5173\u6ce8\u6a21\u5757</b></span><div class=\\\"text-muted\\\">\u56f4\u7ed5\u201c\u662f\u5426\u63a8\u8fdb\u201d\u505a\u5224\u65ad\uff0c\u907f\u514d\u7ecf\u7406\u9677\u5165\u65e5\u5e38\u5f55\u5165\u3002</div>\", \"col\": 12}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u5019\u9009\u4eba\u590d\u6838\", \"col\": 6}}, {\"type\": \"card\", \"data\": {\"card_name\": \"\u9762\u8bd5\u4e0e\u5f55\u7528\", \"col\": 6}}]",
  "creation": "2026-03-21 08:49:34.585088",
  "custom_blocks": [],
  "docstatus": 0,
@@ -53,7 +53,7 @@
    "type": "Link"
   },
   {
-   "description": "\u805a\u7126\u9762\u8bd5\u53cd\u9988\u3001Offer \u51b3\u7b56\u4e0e\u5f55\u7528\u63a8\u8fdb\u3002",
+   "description": "\u805a\u7126\u9762\u8bd5\u53cd\u9988\u3001Offer \u51b3\u7b56\u4e0e\u5f55\u7528\u7ed3\u679c\u7559\u75d5\u3002",
    "hidden": 0,
    "is_query_report": 0,
    "label": "\u9762\u8bd5\u4e0e\u5f55\u7528",
@@ -85,7 +85,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Offer \u534f\u540c",
+   "label": "Offer \u7ba1\u7406",
    "link_count": 0,
    "link_to": "Job Offer",
    "link_type": "DocType",
@@ -93,7 +93,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-21 09:48:03.770582",
+ "modified": "2026-03-23 10:21:42.959110",
  "modified_by": "Administrator",
  "module": "Recruitment Intelligence",
  "name": "AIHR \u7528\u4eba\u7ecf\u7406\u4e2d\u5fc3",
@@ -102,7 +102,17 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [],
+ "roles": [
+  {
+   "role": "AIHR Hiring Manager"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
  "sequence_id": 0.0,
  "shortcuts": [
   {
@@ -136,7 +146,7 @@
    "color": "#be123c",
    "doc_view": "List",
    "format": "{} \u6761 Offer",
-   "label": "Offer \u534f\u540c",
+   "label": "Offer \u7ba1\u7406",
    "link_to": "Job Offer",
    "stats_filter": "{\"docstatus\": [\"!=\", \"2\"]}",
    "type": "DocType"
