@@ -9,6 +9,7 @@ def ensure_title_fields() -> None:
         ("Job Opening", "job_title"),
         ("Job Requisition", "designation"),
         ("Job Applicant", "applicant_name"),
+        ("AI Screening", "aihr_candidate_name_snapshot"),
     ]
 
     for doctype, fieldname in specs:
