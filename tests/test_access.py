@@ -40,6 +40,15 @@ class AccessBlueprintTests(unittest.TestCase):
         self.assertEqual(requisition_permissions[HR_MANAGER_ROLE]["write"], 1)
         self.assertEqual(requisition_permissions[AIHR_HIRING_MANAGER_ROLE]["create"], 1)
 
+    def test_manager_can_read_supporting_master_doctypes_for_requisition(self):
+        designation_permissions = DOCTYPE_PERMISSION_BLUEPRINT["Designation"][AIHR_HIRING_MANAGER_ROLE]
+        department_permissions = DOCTYPE_PERMISSION_BLUEPRINT["Department"][AIHR_HIRING_MANAGER_ROLE]
+        self.assertEqual(designation_permissions["read"], 1)
+        self.assertEqual(designation_permissions["create"], 1)
+        self.assertEqual(designation_permissions["select"], 1)
+        self.assertEqual(department_permissions["read"], 1)
+        self.assertEqual(department_permissions["select"], 1)
+
     def test_manager_workspace_related_doctypes_are_exposed_to_hiring_manager(self):
         for doctype in ("Job Opening", "Job Applicant", "AI Screening", "Interview", "Interview Feedback", "Job Offer"):
             self.assertIn(AIHR_HIRING_MANAGER_ROLE, DOCTYPE_PERMISSION_BLUEPRINT[doctype])

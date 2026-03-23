@@ -24,6 +24,16 @@ WORKSPACE_ROLE_BINDINGS = {
 }
 
 DOCTYPE_PERMISSION_BLUEPRINT: dict[str, dict[str, dict[str, int]]] = {
+    "Designation": {
+        HR_USER_ROLE: {"read": 1, "write": 1, "create": 1, "report": 1, "select": 1},
+        HR_MANAGER_ROLE: {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "select": 1},
+        AIHR_HIRING_MANAGER_ROLE: {"read": 1, "write": 1, "create": 1, "report": 1, "select": 1},
+    },
+    "Department": {
+        HR_USER_ROLE: {"read": 1, "report": 1, "select": 1},
+        HR_MANAGER_ROLE: {"read": 1, "report": 1, "select": 1},
+        AIHR_HIRING_MANAGER_ROLE: {"read": 1, "report": 1, "select": 1},
+    },
     "Job Requisition": {
         HR_USER_ROLE: {"read": 1, "write": 1, "create": 1, "report": 1},
         HR_MANAGER_ROLE: {"read": 1, "write": 1, "create": 1, "delete": 1, "report": 1},
