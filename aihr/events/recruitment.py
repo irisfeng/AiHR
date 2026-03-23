@@ -13,6 +13,7 @@ from aihr.services.recruitment_ops import (
     get_onboarding_next_action,
     get_offer_next_action,
 )
+from aihr.setup.workflows import ensure_job_requisition_workflow_status
 
 REQUISITION_BRIEF_FIELDS = (
     "designation",
@@ -37,6 +38,10 @@ def sync_job_requisition_brief(doc, method=None) -> None:
         return
 
     doc.aihr_agency_brief = generate_requisition_agency_brief(doc)
+
+
+def sync_job_requisition_workflow_state(doc, method=None) -> None:
+    ensure_job_requisition_workflow_status(doc)
 
 
 def sync_job_opening_pack(doc, method=None) -> None:

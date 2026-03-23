@@ -1,5 +1,6 @@
 frappe.ui.form.on("Job Requisition", {
   refresh(frm) {
+    frm.set_df_property("status", "read_only", 1);
     renderRequisitionSnapshot(frm);
 
     if (frm.is_new()) {
@@ -24,14 +25,16 @@ frappe.ui.form.on("Job Requisition", {
       });
     }
 
-    frm.add_custom_button("新建招聘中岗位", () => {
-      frappe.new_doc("Job Opening", {
-        job_requisition: frm.doc.name,
-        job_title: frm.doc.designation,
-        designation: frm.doc.designation,
-        department: frm.doc.department,
+    if (frm.doc.status === "Open & Approved" && canCreateJobOpening()) {
+      frm.add_custom_button("新建招聘中岗位", () => {
+        frappe.new_doc("Job Opening", {
+          job_requisition: frm.doc.name,
+          job_title: frm.doc.designation,
+          designation: frm.doc.designation,
+          department: frm.doc.department,
+        });
       });
-    });
+    }
   },
 });
 
@@ -165,6 +168,11 @@ function workModeLabel(value) {
     Remote: "远程办公",
   };
   return labels[value] || value || "模式待确认";
+}
+
+function canCreateJobOpening() {
+  const roles = Array.isArray(frappe.user_roles) ? frappe.user_roles : [];
+  return roles.includes("HR Manager") || roles.includes("System Manager");
 }
 
 function renderRequisitionEmpty(message) {

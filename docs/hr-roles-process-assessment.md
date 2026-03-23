@@ -12,9 +12,9 @@
 最关键的现实判断是：
 
 1. `HR / 面试官 / 用人经理` 的页面入口已经分成 3 个中心，且 **Workspace 已按角色绑定**，不再是公开入口。
-2. 当前系统 **仍然没有启用 Workflow**，所以岗位审批、Offer 审批、录用确认还不是制度化审批流。
+2. `Job Requisition` 已启用正式 Workflow，岗位需求已从“按钮推进”升级为制度化审批流。
 3. `用人经理` 角色已经正式落地为 `AIHR Hiring Manager`，并已增加“仅看本人部门”的行级限制。
-4. 当前最值得优先补的是：`审批流启用 + 岗位范围进一步细化 + 导入结果页`。
+4. 当前最值得优先补的是：`岗位范围进一步细化 + Offer / 入职审批流 + 导入结果页`。
 
 当前组织口径已确认采用 **9 个一级平级部门**，不做父子部门：
 
@@ -94,7 +94,9 @@
 #### 未落实或落实不完整
 
 - `Job Requisition`
-  - 已能由经理发起，但还没有审批 Workflow
+  - 已能由经理发起
+  - 已启用正式审批 Workflow
+  - 已按 Workflow 锁定状态字段，不能再手工绕过流程改状态
 - `AIHR` 三个工作台
   - 已做角色可见绑定，部分数据接口也已接入部门过滤
   - 仍需继续补齐“仅看本人岗位”的更细粒度范围
@@ -128,16 +130,20 @@
 
 - `AIHR Hiring Manager` 可创建/编辑 `Job Requisition`
 - `HR User / HR Manager` 仍可协同维护
+- `Job Requisition Workflow`
+  - `草稿 -> 待HR处理 -> 已批准 / 已驳回`
+  - `已批准 -> 已暂停 / 已取消`
+  - `已驳回 -> 重新提交`
 
 仍然缺的是：
 
-- “经理提交 -> HR补充 -> 审批 -> 开启岗位”的正式 Workflow
+- Offer 与入职交接的正式 Workflow
 
-#### 问题 3：工作流还没有启用
+#### 问题 3：Workflow 只落了一半
 
 当前站点核查结果：
 
-- `Job Requisition`：无 Workflow
+- `Job Requisition`：已启用 `AIHR Job Requisition Approval`
 - `Job Opening`：无 Workflow
 - `Job Applicant`：无 Workflow
 - `Interview`：无 Workflow
@@ -150,7 +156,7 @@
 - 有状态
 - 有按钮
 - 有自动化
-- 但没有审批流
+- 但只有岗位需求有正式审批流，后半段仍待制度化
 
 ### 1.4 建议的权限目标矩阵
 
@@ -176,12 +182,12 @@
 - 已完成：给 3 个 AIHR Workspace 显式绑定角色
 - 已完成：修正 `Job Requisition` 的创建权限，让经理可发起
 - 已完成：让经理中心默认只能看“我部门”的岗位和候选人
+- 已完成：启用 `Job Requisition` 正式 Workflow
 - 待完成：从“我部门”进一步细化到“我负责的岗位”
 
 #### P1
 
 - 建 `Workflow`
-  - 岗位需求审批流
   - Offer 审批流
   - 入职交接确认流
 - 增加 `User Permission`

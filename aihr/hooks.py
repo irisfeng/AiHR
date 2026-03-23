@@ -53,6 +53,7 @@ has_permission = {
 doc_events = {
     "Job Requisition": {
         "validate": "aihr.events.recruitment.sync_job_requisition_brief",
+        "on_update": "aihr.events.recruitment.sync_job_requisition_workflow_state",
     },
     "Job Opening": {
         "validate": "aihr.events.recruitment.sync_job_opening_pack",
