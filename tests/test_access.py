@@ -14,6 +14,8 @@ from aihr.setup.workspace import (
     INTERVIEWER_WORKSPACE_NAME,
     MANAGER_WORKSPACE_NAME,
     WORKSPACE_NAME,
+    _manager_workspace_links,
+    _manager_workspace_shortcuts,
 )
 
 
@@ -51,6 +53,13 @@ class AccessBlueprintTests(unittest.TestCase):
         self.assertIn("manager.demo@aihr.local", {item["user_id"] for item in DEMO_MANAGER_ACCOUNTS})
         self.assertIn("delivery.manager@aihr.local", {item["user_id"] for item in DEMO_MANAGER_ACCOUNTS})
         self.assertIn("hr.demo@aihr.local", {item["user_id"] for item in DEMO_HR_ACCOUNTS})
+
+    def test_manager_workspace_exposes_job_requisition_entry(self):
+        shortcut_labels = {item["label"] for item in _manager_workspace_shortcuts()}
+        self.assertIn("岗位需求单", shortcut_labels)
+
+        link_labels = {item.get("label") for item in _manager_workspace_links() if item.get("type") == "Link"}
+        self.assertIn("岗位需求单", link_labels)
 
 
 if __name__ == "__main__":

@@ -294,10 +294,11 @@ def _manager_workspace_content() -> list[dict]:
         {
             "type": "header",
             "data": {
-                "text": '<span class="h4"><b>用人经理概览</b></span><div class="text-muted">经理只看待复核候选人、面试安排和 Offer 决策，不再先翻 PDF 简历。</div>',
+                "text": '<span class="h4"><b>用人经理概览</b></span><div class="text-muted">先发起岗位需求，再看 AI 初筛、面试安排和 Offer 决策，不再先翻 PDF 简历。</div>',
                 "col": 12,
             },
         },
+        {"type": "shortcut", "data": {"shortcut_name": "岗位需求单", "col": 3}},
         {"type": "shortcut", "data": {"shortcut_name": "待经理复核", "col": 3}},
         {"type": "shortcut", "data": {"shortcut_name": "候选人池", "col": 3}},
         {"type": "shortcut", "data": {"shortcut_name": "面试安排", "col": 3}},
@@ -306,7 +307,7 @@ def _manager_workspace_content() -> list[dict]:
         {
             "type": "header",
             "data": {
-                "text": '<span class="h4"><b>经理关注模块</b></span><div class="text-muted">围绕“是否推进”做判断，避免经理陷入日常录入。</div>',
+                "text": '<span class="h4"><b>经理关注模块</b></span><div class="text-muted">从岗位需求开始，再围绕“是否推进”做判断，避免经理陷入日常录入。</div>',
                 "col": 12,
             },
         },
@@ -317,6 +318,15 @@ def _manager_workspace_content() -> list[dict]:
 
 def _manager_workspace_shortcuts() -> list[dict]:
     return [
+        {
+            "label": "岗位需求单",
+            "type": "DocType",
+            "link_to": "Job Requisition",
+            "doc_view": "List",
+            "format": "{} 条需求",
+            "stats_filter": json.dumps({"docstatus": ["!=", "2"]}, ensure_ascii=False),
+            "color": "#0f766e",
+        },
         {
             "label": "待经理复核",
             "type": "DocType",
@@ -360,12 +370,18 @@ def _manager_workspace_links() -> list[dict]:
     return [
         {
             "type": "Card Break",
+            "label": "岗位需求",
+            "description": "先发起并查看岗位需求单，再进入候选人复核和面试推进。",
+        },
+        {"type": "Link", "label": "岗位需求单", "link_type": "DocType", "link_to": "Job Requisition"},
+        {"type": "Link", "label": "招聘中岗位", "link_type": "DocType", "link_to": "Job Opening"},
+        {
+            "type": "Card Break",
             "label": "候选人复核",
             "description": "先看 AI 摘要，再做经理判断和推进决策。",
         },
         {"type": "Link", "label": "待经理复核", "link_type": "DocType", "link_to": "AI Screening"},
         {"type": "Link", "label": "候选人池", "link_type": "DocType", "link_to": "Job Applicant"},
-        {"type": "Link", "label": "招聘中岗位", "link_type": "DocType", "link_to": "Job Opening"},
         {
             "type": "Card Break",
             "label": "面试与录用",
