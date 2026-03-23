@@ -1,6 +1,13 @@
 frappe.ui.form.on("Job Requisition", {
-  refresh(frm) {
+  async refresh(frm) {
     frm.set_df_property("status", "read_only", 1);
+    frm.set_df_property("designation", "hidden", 1);
+    frm.set_df_property("requested_by_designation", "hidden", 1);
+    if (isHiringManagerOnly()) {
+      frm.set_df_property("requested_by", "hidden", 1);
+    }
+    syncRequisitionTitleFields(frm, { syncFromDesignation: true });
+    await applyRequisitionDefaults(frm);
     renderRequisitionSnapshot(frm);
 
     if (frm.is_new()) {
@@ -26,15 +33,26 @@ frappe.ui.form.on("Job Requisition", {
     }
 
     if (frm.doc.status === "Open & Approved" && canCreateJobOpening()) {
+      const jobTitle = getRequisitionJobTitle(frm.doc);
       frm.add_custom_button("新建招聘中岗位", () => {
         frappe.new_doc("Job Opening", {
           job_requisition: frm.doc.name,
-          job_title: frm.doc.designation,
-          designation: frm.doc.designation,
+          job_title: jobTitle,
+          designation: jobTitle,
           department: frm.doc.department,
         });
       });
     }
+  },
+
+  aihr_job_title(frm) {
+    syncRequisitionTitleFields(frm);
+    renderRequisitionSnapshot(frm);
+  },
+
+  designation(frm) {
+    syncRequisitionTitleFields(frm, { syncFromDesignation: true });
+    renderRequisitionSnapshot(frm);
   },
 });
 
@@ -62,7 +80,7 @@ function renderRequisitionSnapshot(frm) {
       <div style="display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap;">
         <div>
           <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #0f766e; font-weight: 700;">AIHR 岗位概览</div>
-          <div style="font-size: 26px; font-weight: 700; margin-top: 6px;">${escapeHtml(frm.doc.designation || "待命名岗位")}</div>
+          <div style="font-size: 26px; font-weight: 700; margin-top: 6px;">${escapeHtml(getRequisitionJobTitle(frm.doc) || "待命名岗位")}</div>
           <div style="margin-top: 8px; color: var(--text-muted); line-height: 1.6;">
             ${escapeHtml(
               (frm.doc.description || "这是一条招聘需求记录，用于统一岗位信息、代理发布包和招聘推进动作。").slice(0, 120)
@@ -173,6 +191,70 @@ function workModeLabel(value) {
 function canCreateJobOpening() {
   const roles = Array.isArray(frappe.user_roles) ? frappe.user_roles : [];
   return roles.includes("HR Manager") || roles.includes("System Manager");
+}
+
+function isHiringManagerOnly() {
+  const roles = Array.isArray(frappe.user_roles) ? frappe.user_roles : [];
+  return roles.includes("AIHR Hiring Manager") && !roles.includes("HR Manager") && !roles.includes("System Manager");
+}
+
+async function applyRequisitionDefaults(frm) {
+  if (!frm.is_new() || frm.__aihr_defaults_loaded) {
+    return;
+  }
+
+  try {
+    frm.__aihr_defaults_loaded = true;
+    const response = await frappe.call({
+      method: "aihr.api.recruitment.get_job_requisition_defaults",
+    });
+    const defaults = response.message || {};
+
+    if (!frm.doc.requested_by && defaults.requested_by) {
+      await frm.set_value("requested_by", defaults.requested_by);
+    }
+    if (!frm.doc.requested_by_name && defaults.requested_by_name) {
+      await frm.set_value("requested_by_name", defaults.requested_by_name);
+    }
+    if (!frm.doc.aihr_requested_by_title && defaults.requester_title) {
+      await frm.set_value("aihr_requested_by_title", defaults.requester_title);
+    }
+    if (!frm.doc.requested_by_dept && defaults.department) {
+      await frm.set_value("requested_by_dept", defaults.department);
+    }
+    if (!frm.doc.department && defaults.department) {
+      await frm.set_value("department", defaults.department);
+    }
+  } catch (error) {
+    frm.__aihr_defaults_loaded = false;
+    console.warn("AIHR requisition defaults unavailable", error);
+  }
+}
+
+function getRequisitionJobTitle(doc) {
+  return doc.aihr_job_title || doc.designation || "";
+}
+
+function syncRequisitionTitleFields(frm, options = {}) {
+  const syncFromDesignation = Boolean(options.syncFromDesignation);
+  const title = (frm.doc.aihr_job_title || "").trim();
+  const designation = (frm.doc.designation || "").trim();
+  const resolved = syncFromDesignation ? title || designation : title || designation;
+
+  if (syncFromDesignation && !title && designation) {
+    frm.set_value("aihr_job_title", designation);
+    return;
+  }
+
+  if (title && designation !== title) {
+    frm.set_value("designation", title);
+  } else if (!title && designation && !syncFromDesignation) {
+    frm.set_value("aihr_job_title", designation);
+  } else if (!designation && title) {
+    frm.set_value("designation", title);
+  } else if (!title && !designation && resolved) {
+    frm.set_value("aihr_job_title", resolved);
+  }
 }
 
 function renderRequisitionEmpty(message) {

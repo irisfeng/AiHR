@@ -7,7 +7,7 @@ def ensure_title_fields() -> None:
 
     specs = [
         ("Job Opening", "job_title"),
-        ("Job Requisition", "designation"),
+        ("Job Requisition", "aihr_job_title"),
         ("Job Applicant", "applicant_name"),
         ("AI Screening", "aihr_candidate_name_snapshot"),
     ]
@@ -24,6 +24,65 @@ def ensure_title_fields() -> None:
             "Data",
             for_doctype=True,
         )
+
+    frappe.clear_cache()
+
+
+def ensure_requisition_field_presentation() -> None:
+    import frappe
+    from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+
+    specs = [
+        ("Job Requisition", "designation", "hidden", 1, "Check"),
+        ("Job Requisition", "requested_by_designation", "hidden", 1, "Check"),
+    ]
+
+    for doctype, fieldname, property_name, value, property_type in specs:
+        current = frappe.db.get_value(
+            "Property Setter",
+            {
+                "doc_type": doctype,
+                "field_name": fieldname,
+                "property": property_name,
+            },
+            "value",
+        )
+        if str(current) == str(value):
+            continue
+        make_property_setter(
+            doctype,
+            fieldname,
+            property_name,
+            value,
+            property_type,
+        )
+
+    frappe.clear_cache()
+
+
+def sync_job_requisition_display_fields() -> None:
+    import frappe
+
+    requisitions = frappe.get_all(
+        "Job Requisition",
+        fields=["name", "designation", "requested_by", "aihr_job_title", "aihr_requested_by_title"],
+    )
+
+    for requisition in requisitions:
+        updates = {}
+        title = (requisition.get("aihr_job_title") or requisition.get("designation") or "").strip()
+        if title and title != (requisition.get("aihr_job_title") or ""):
+            updates["aihr_job_title"] = title
+
+        requester = requisition.get("requested_by")
+        requester_title = ""
+        if requester and frappe.db.exists("Employee", requester):
+            requester_title = frappe.db.get_value("Employee", requester, "designation") or ""
+        if requester_title and requester_title != (requisition.get("aihr_requested_by_title") or ""):
+            updates["aihr_requested_by_title"] = requester_title
+
+        if updates:
+            frappe.db.set_value("Job Requisition", requisition["name"], updates, update_modified=False)
 
     frappe.clear_cache()
 
@@ -70,5 +129,29 @@ def sync_ai_screening_display_snapshots() -> None:
 
         if updates:
             frappe.db.set_value("AI Screening", screening["name"], updates, update_modified=False)
+
+    frappe.clear_cache()
+
+
+def normalize_imported_job_applicants() -> None:
+    import frappe
+
+    imported_applicants = frappe.get_all(
+        "Job Applicant",
+        filters={"aihr_resume_intake_batch": ["is", "set"]},
+        fields=["name", "source", "source_name", "employee_referral"],
+    )
+
+    for applicant in imported_applicants:
+        updates = {}
+        if applicant.get("source"):
+            updates["source"] = None
+        if applicant.get("source_name"):
+            updates["source_name"] = None
+        if applicant.get("employee_referral"):
+            updates["employee_referral"] = None
+
+        if updates:
+            frappe.db.set_value("Job Applicant", applicant["name"], updates, update_modified=False)
 
     frappe.clear_cache()

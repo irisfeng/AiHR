@@ -13,6 +13,16 @@ class FakeDB:
         return values.get(fieldname, "")
 
 
+class FakeExistsDB:
+    def __init__(self, exists_map):
+        self.exists_map = exists_map
+        self.calls = []
+
+    def exists(self, doctype, filters):
+        self.calls.append((doctype, filters))
+        return self.exists_map.get(tuple(sorted(filters.items())))
+
+
 class FakeFrappe:
     def __init__(self):
         self.db = FakeDB()
@@ -97,6 +107,66 @@ class RecruitmentApiTests(unittest.TestCase):
 
         self.assertEqual(snapshots["candidate_name"], "陈寒")
         self.assertEqual(snapshots["opening_title"], "交付工程师 - AIHR Demo")
+
+    def test_find_existing_job_applicant_scopes_email_lookup_to_opening(self):
+        original_frappe = recruitment.frappe
+        fake_db = FakeExistsDB(
+            {
+                tuple(sorted({"job_title": "HR-OPN-2026-0004", "email_id": "chenhan@example.com"}.items())): "APP-DELIVERY-001",
+            }
+        )
+
+        class FakeScopedFrappe:
+            def __init__(self):
+                self.db = fake_db
+
+            def get_doc(self, doctype, name):
+                return SimpleNamespace(name=name)
+
+        try:
+            recruitment.frappe = FakeScopedFrappe()
+            applicant = recruitment._find_existing_job_applicant(
+                "HR-OPN-2026-0004",
+                "chenhan@example.com",
+                "",
+                "陈寒",
+            )
+        finally:
+            recruitment.frappe = original_frappe
+
+        self.assertEqual(applicant.name, "APP-DELIVERY-001")
+        self.assertEqual(
+            fake_db.calls[0],
+            ("Job Applicant", {"job_title": "HR-OPN-2026-0004", "email_id": "chenhan@example.com"}),
+        )
+
+    def test_find_existing_job_applicant_does_not_reuse_other_opening_email(self):
+        original_frappe = recruitment.frappe
+        fake_db = FakeExistsDB({})
+
+        class FakeScopedFrappe:
+            def __init__(self):
+                self.db = fake_db
+
+            def get_doc(self, doctype, name):
+                return SimpleNamespace(name=name)
+
+        try:
+            recruitment.frappe = FakeScopedFrappe()
+            applicant = recruitment._find_existing_job_applicant(
+                "HR-OPN-2026-0004",
+                "existing-in-other-opening@example.com",
+                "",
+                "候选人甲",
+            )
+        finally:
+            recruitment.frappe = original_frappe
+
+        self.assertIsNone(applicant)
+        self.assertEqual(
+            fake_db.calls[0],
+            ("Job Applicant", {"job_title": "HR-OPN-2026-0004", "email_id": "existing-in-other-opening@example.com"}),
+        )
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ from aihr.services.recruitment_ops import (
 from aihr.setup.workflows import ensure_job_requisition_workflow_status
 
 REQUISITION_BRIEF_FIELDS = (
+    "aihr_job_title",
     "designation",
     "department",
     "description",
@@ -31,6 +32,33 @@ REQUISITION_BRIEF_FIELDS = (
 )
 
 APPLICANT_AUTOSCREEN_FIELDS = ("aihr_resume_text", "resume_attachment", "job_title")
+
+
+def sync_job_requisition_identity(doc, method=None) -> None:
+    if not getattr(doc, "requested_by", None):
+        employee_name = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+        if employee_name:
+            doc.requested_by = employee_name
+
+    requester = getattr(doc, "requested_by", None)
+    if requester and frappe.db.exists("Employee", requester):
+        requester_title = frappe.db.get_value("Employee", requester, "designation") or ""
+        requester_name = frappe.db.get_value("Employee", requester, "employee_name") or ""
+        requester_department = frappe.db.get_value("Employee", requester, "department") or ""
+        if requester_title:
+            doc.aihr_requested_by_title = requester_title
+        if requester_name:
+            doc.requested_by_name = requester_name
+        if requester_department:
+            doc.requested_by_dept = requester_department
+            if not getattr(doc, "department", None):
+                doc.department = requester_department
+
+    title = (getattr(doc, "aihr_job_title", None) or getattr(doc, "designation", None) or "").strip()
+    if title:
+        doc.aihr_job_title = title
+        doc.designation = title
+        _ensure_designation_exists(title)
 
 
 def sync_job_requisition_brief(doc, method=None) -> None:
@@ -219,3 +247,14 @@ def _calculate_average_rating(rows) -> float:
     if not ratings:
         return 0
     return round(sum(ratings) / len(ratings), 1)
+
+
+def _ensure_designation_exists(title: str) -> None:
+    if not title:
+        return
+    if frappe.db.exists("Designation", title) or frappe.db.exists("Designation", {"designation_name": title}):
+        return
+
+    doc = frappe.new_doc("Designation")
+    doc.designation_name = title
+    doc.insert(ignore_permissions=True)

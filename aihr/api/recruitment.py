@@ -92,6 +92,37 @@ def build_requisition_agency_brief(payload: dict[str, Any]) -> str:
 
 
 @whitelist()
+def get_job_requisition_defaults() -> dict[str, Any]:
+    if not frappe:
+        raise RuntimeError("Frappe is required for loading requisition defaults.")
+
+    user = frappe.session.user
+    employee_name = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    if not employee_name:
+        return {
+            "user": user,
+            "requested_by": "",
+            "requested_by_name": "",
+            "department": "",
+            "requester_title": "",
+        }
+
+    employee = frappe.db.get_value(
+        "Employee",
+        employee_name,
+        ["name", "employee_name", "department", "designation"],
+        as_dict=True,
+    ) or {}
+    return {
+        "user": user,
+        "requested_by": employee.get("name") or "",
+        "requested_by_name": employee.get("employee_name") or "",
+        "department": employee.get("department") or "",
+        "requester_title": employee.get("designation") or "",
+    }
+
+
+@whitelist()
 def create_resume_intake_batch(
     job_opening: str,
     archive_file: str,
@@ -1946,6 +1977,9 @@ def _upsert_job_applicant_from_archive_item(
     applicant.email_id = email or getattr(applicant, "email_id", "")
     applicant.phone_number = phone or getattr(applicant, "phone_number", "")
     applicant.country = getattr(applicant, "country", "") or "China"
+    applicant.source = None
+    applicant.source_name = None
+    applicant.employee_referral = None
     applicant.aihr_resume_text = archive_item.get("resume_text", "")
     applicant.aihr_resume_file_name = archive_item["file_name"]
     applicant.aihr_resume_source_supplier = supplier_name
@@ -1985,7 +2019,7 @@ def _fallback_resume_email(file_name: str, applicant_name: str, phone: str, batc
 
 def _find_existing_job_applicant(job_opening: str, email: str, phone: str, applicant_name: str):
     if email:
-        existing = frappe.db.exists("Job Applicant", {"email_id": email})
+        existing = frappe.db.exists("Job Applicant", {"job_title": job_opening, "email_id": email})
         if existing:
             return frappe.get_doc("Job Applicant", existing)
 

@@ -15,6 +15,13 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
     return {
         "Job Requisition": [
             {
+                "fieldname": "aihr_job_title",
+                "fieldtype": "Data",
+                "label": "Job Title",
+                "insert_after": "naming_series",
+                "reqd": 1,
+            },
+            {
                 "fieldname": "aihr_hiring_profile_section",
                 "fieldtype": "Section Break",
                 "label": "AIHR Hiring Profile",
@@ -95,6 +102,13 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
                 "fieldtype": "Text Editor",
                 "label": "Agency Brief",
                 "insert_after": "aihr_nice_to_have_skills",
+            },
+            {
+                "fieldname": "aihr_requested_by_title",
+                "fieldtype": "Data",
+                "label": "Requester Title",
+                "insert_after": "requested_by",
+                "read_only": 1,
             },
         ],
         "Job Opening": [
