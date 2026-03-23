@@ -60,6 +60,13 @@ def sync_job_requisition_identity(doc, method=None) -> None:
         doc.designation = title
         _ensure_designation_exists(title)
 
+    role_description = (getattr(doc, "aihr_role_description_input", None) or "").strip()
+    description = (getattr(doc, "description", None) or "").strip()
+    if role_description:
+        doc.description = role_description
+    elif description:
+        doc.aihr_role_description_input = description
+
 
 def sync_job_requisition_brief(doc, method=None) -> None:
     if not any(getattr(doc, fieldname, None) for fieldname in REQUISITION_BRIEF_FIELDS):

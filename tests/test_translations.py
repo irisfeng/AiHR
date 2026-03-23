@@ -57,6 +57,7 @@ class TranslationCoverageTests(unittest.TestCase):
             "Expected Compensation": "预期薪酬",
             "Requested By": "需求提出人",
             "Job Title": "岗位名称",
+            "Role Description": "岗位职责与要求",
             "Requester Title": "提出人职位",
             "No. of Positions": "招聘人数",
             "No of. Positions": "招聘人数",

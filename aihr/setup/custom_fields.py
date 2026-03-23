@@ -22,6 +22,12 @@ def get_custom_fields() -> dict[str, list[dict[str, Any]]]:
                 "reqd": 1,
             },
             {
+                "fieldname": "aihr_role_description_input",
+                "fieldtype": "Long Text",
+                "label": "Role Description",
+                "insert_after": "department",
+            },
+            {
                 "fieldname": "aihr_hiring_profile_section",
                 "fieldtype": "Section Break",
                 "label": "AIHR Hiring Profile",

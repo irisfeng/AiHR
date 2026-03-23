@@ -3,11 +3,9 @@ frappe.ui.form.on("Job Requisition", {
     frm.set_df_property("status", "read_only", 1);
     frm.set_df_property("designation", "hidden", 1);
     frm.set_df_property("requested_by_designation", "hidden", 1);
-    if (isHiringManagerOnly()) {
-      frm.set_df_property("requested_by", "hidden", 1);
-    }
     syncRequisitionTitleFields(frm, { syncFromDesignation: true });
     await applyRequisitionDefaults(frm);
+    configureRequisitionEntryForm(frm);
     renderRequisitionSnapshot(frm);
 
     if (frm.is_new()) {
@@ -50,9 +48,36 @@ frappe.ui.form.on("Job Requisition", {
     renderRequisitionSnapshot(frm);
   },
 
+  aihr_role_description_input(frm) {
+    syncRequisitionDescriptionFields(frm);
+  },
+
   designation(frm) {
     syncRequisitionTitleFields(frm, { syncFromDesignation: true });
     renderRequisitionSnapshot(frm);
+  },
+
+  description(frm) {
+    syncRequisitionDescriptionFields(frm, { syncFromDescription: true });
+  },
+
+  validate(frm) {
+    syncRequisitionTitleFields(frm);
+    syncRequisitionDescriptionFields(frm);
+    ensureRequesterDefaults(frm);
+
+    if (isHiringManagerOnly() && !(frm.doc.aihr_role_description_input || "").trim()) {
+      focusManagerDescription(frm);
+      frappe.msgprint("请先填写岗位职责与要求，再保存岗位需求单。");
+      frappe.validated = false;
+      return false;
+    }
+
+    if (!(frm.doc.requested_by || "").trim()) {
+      frappe.msgprint("需求提出人会自动带入当前登录经理，请刷新页面后重试。");
+      frappe.validated = false;
+      return false;
+    }
   },
 });
 
@@ -209,25 +234,57 @@ async function applyRequisitionDefaults(frm) {
       method: "aihr.api.recruitment.get_job_requisition_defaults",
     });
     const defaults = response.message || {};
+    frm.__aihr_requisition_defaults = defaults;
 
-    if (!frm.doc.requested_by && defaults.requested_by) {
-      await frm.set_value("requested_by", defaults.requested_by);
-    }
-    if (!frm.doc.requested_by_name && defaults.requested_by_name) {
-      await frm.set_value("requested_by_name", defaults.requested_by_name);
-    }
-    if (!frm.doc.aihr_requested_by_title && defaults.requester_title) {
-      await frm.set_value("aihr_requested_by_title", defaults.requester_title);
-    }
-    if (!frm.doc.requested_by_dept && defaults.department) {
-      await frm.set_value("requested_by_dept", defaults.department);
-    }
-    if (!frm.doc.department && defaults.department) {
-      await frm.set_value("department", defaults.department);
-    }
+    await populateRequesterDefaults(frm, defaults);
   } catch (error) {
     frm.__aihr_defaults_loaded = false;
     console.warn("AIHR requisition defaults unavailable", error);
+  }
+}
+
+async function populateRequesterDefaults(frm, defaults) {
+  if (!defaults) {
+    return;
+  }
+
+  if (!frm.doc.requested_by && defaults.requested_by) {
+    await frm.set_value("requested_by", defaults.requested_by);
+  }
+  if (!frm.doc.requested_by_name && defaults.requested_by_name) {
+    await frm.set_value("requested_by_name", defaults.requested_by_name);
+  }
+  if (!frm.doc.aihr_requested_by_title && defaults.requester_title) {
+    await frm.set_value("aihr_requested_by_title", defaults.requester_title);
+  }
+  if (!frm.doc.requested_by_dept && defaults.department) {
+    await frm.set_value("requested_by_dept", defaults.department);
+  }
+  if (!frm.doc.department && defaults.department) {
+    await frm.set_value("department", defaults.department);
+  }
+}
+
+function ensureRequesterDefaults(frm) {
+  const defaults = frm.__aihr_requisition_defaults || {};
+  if (!defaults) {
+    return;
+  }
+
+  if (!frm.doc.requested_by && defaults.requested_by) {
+    frm.doc.requested_by = defaults.requested_by;
+  }
+  if (!frm.doc.requested_by_name && defaults.requested_by_name) {
+    frm.doc.requested_by_name = defaults.requested_by_name;
+  }
+  if (!frm.doc.aihr_requested_by_title && defaults.requester_title) {
+    frm.doc.aihr_requested_by_title = defaults.requester_title;
+  }
+  if (!frm.doc.requested_by_dept && defaults.department) {
+    frm.doc.requested_by_dept = defaults.department;
+  }
+  if (!frm.doc.department && defaults.department) {
+    frm.doc.department = defaults.department;
   }
 }
 
@@ -254,6 +311,61 @@ function syncRequisitionTitleFields(frm, options = {}) {
     frm.set_value("designation", title);
   } else if (!title && !designation && resolved) {
     frm.set_value("aihr_job_title", resolved);
+  }
+}
+
+function syncRequisitionDescriptionFields(frm, options = {}) {
+  const syncFromDescription = Boolean(options.syncFromDescription);
+  const roleDescription = (frm.doc.aihr_role_description_input || "").trim();
+  const description = (frm.doc.description || "").trim();
+
+  if (syncFromDescription && description && !roleDescription) {
+    frm.set_value("aihr_role_description_input", description);
+    return;
+  }
+
+  if (roleDescription && description !== roleDescription) {
+    frm.set_value("description", roleDescription);
+  } else if (!roleDescription && description && !syncFromDescription) {
+    frm.set_value("aihr_role_description_input", description);
+  }
+}
+
+function configureRequisitionEntryForm(frm) {
+  const managerOnly = isHiringManagerOnly();
+
+  frm.set_df_property("aihr_role_description_input", "hidden", !managerOnly);
+  frm.set_df_property("aihr_role_description_input", "reqd", managerOnly ? 1 : 0);
+  frm.set_df_property("description", "hidden", managerOnly ? 1 : 0);
+  frm.set_df_property("description", "reqd", managerOnly ? 0 : 1);
+  frm.set_df_property("requested_by", "hidden", managerOnly ? 1 : 0);
+  frm.set_df_property("requested_by", "reqd", managerOnly ? 0 : 1);
+  frm.set_df_property("requested_by_name", "hidden", managerOnly ? 1 : 0);
+  frm.set_df_property("aihr_requested_by_title", "hidden", managerOnly ? 1 : 0);
+  frm.set_df_property("requested_by_dept", "hidden", managerOnly ? 1 : 0);
+  frm.set_df_property("requested_by_designation", "hidden", 1);
+  frm.set_df_property("section_break_7", "hidden", managerOnly ? 1 : 0);
+
+  syncRequisitionDescriptionFields(frm, { syncFromDescription: true });
+
+  if (!managerOnly) {
+    return;
+  }
+
+  const defaults = frm.__aihr_requisition_defaults || {};
+  const requesterName = frm.doc.requested_by_name || defaults.requested_by_name || "当前登录经理";
+  const requesterTitle = frm.doc.aihr_requested_by_title || defaults.requester_title || "部门经理";
+  frm.set_intro(
+    `需求提出人将自动带入当前登录经理：${requesterName}（${requesterTitle}）。请在当前页填写“岗位职责与要求”。`,
+    "blue",
+  );
+}
+
+function focusManagerDescription(frm) {
+  frm.scroll_to_field("aihr_role_description_input");
+  const field = frm.get_field("aihr_role_description_input");
+  if (field && field.editor) {
+    field.editor.set_focus();
   }
 }
 
