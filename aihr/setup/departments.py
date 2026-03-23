@@ -31,6 +31,18 @@ DEMO_MANAGER_ACCOUNTS = [
     },
 ]
 
+DEMO_HR_ACCOUNTS = [
+    {
+        "user_id": "hr.demo@aihr.local",
+        "first_name": "HR",
+        "last_name": "专员",
+        "department_name": "人事部",
+        "designation_name": "HR 招聘专员",
+        "password": "AIHRDemo!2026",
+        "scope_to_department": False,
+    },
+]
+
 LEGACY_DEPARTMENT_LABEL_MAP = {
     "People": "人事部",
 }
@@ -45,6 +57,7 @@ def ensure_aihr_departments() -> None:
             _ensure_department(company_name, department_name)
         _normalize_legacy_departments(company_name)
         _ensure_demo_manager_accounts(company_name)
+        _ensure_demo_hr_accounts(company_name)
 
 
 def _ensure_department(company_name: str, department_name: str) -> None:
@@ -107,6 +120,11 @@ def _normalize_legacy_departments(company_name: str) -> None:
 
 def _ensure_demo_manager_accounts(company_name: str) -> None:
     for profile in DEMO_MANAGER_ACCOUNTS:
+        _ensure_demo_manager_account(company_name, profile)
+
+
+def _ensure_demo_hr_accounts(company_name: str) -> None:
+    for profile in DEMO_HR_ACCOUNTS:
         _ensure_demo_manager_account(company_name, profile)
 
 
@@ -178,20 +196,29 @@ def _ensure_demo_manager_account(company_name: str, profile: dict[str, str]) -> 
         )
         employee.insert(ignore_permissions=True)
 
-    existing_permission = frappe.db.exists(
-        "User Permission",
-        {"user": user_id, "allow": "Department", "for_value": target_department},
-    )
-    if not existing_permission:
-        doc = frappe.get_doc(
-            {
-                "doctype": "User Permission",
-                "user": user_id,
-                "allow": "Department",
-                "for_value": target_department,
-                "apply_to_all_doctypes": 1,
-                "hide_descendants": 0,
-                "is_default": 1,
-            }
+    if profile.get("scope_to_department", True):
+        existing_permission = frappe.db.exists(
+            "User Permission",
+            {"user": user_id, "allow": "Department", "for_value": target_department},
         )
-        doc.insert(ignore_permissions=True)
+        if not existing_permission:
+            doc = frappe.get_doc(
+                {
+                    "doctype": "User Permission",
+                    "user": user_id,
+                    "allow": "Department",
+                    "for_value": target_department,
+                    "apply_to_all_doctypes": 1,
+                    "hide_descendants": 0,
+                    "is_default": 1,
+                }
+            )
+            doc.insert(ignore_permissions=True)
+    else:
+        frappe.db.sql(
+            """
+            delete from `tabUser Permission`
+            where user = %s and allow = 'Department'
+            """,
+            (user_id,),
+        )

@@ -52,6 +52,11 @@ class NavigationHistoryTests(unittest.TestCase):
             "/app/aihr-manager-review",
         )
 
+    def test_hr_roles_keep_hr_workspace_as_default_home(self):
+        roles = ["HR User", "HR Manager", "Employee"]
+        self.assertEqual(get_preferred_desk_home("hr.demo@aihr.local", roles), "/app/aihr-hiring-hq")
+        self.assertEqual(normalize_desk_path("/app", "hr.demo@aihr.local", roles), "/app/aihr-hiring-hq")
+
     def test_unauthorized_manager_doc_route_redirects_back_to_manager_home(self):
         fake_db = SimpleNamespace(exists=lambda doctype, name: doctype == "AI Screening" and name == "AI-SCR-00025")
         fake_frappe = SimpleNamespace(

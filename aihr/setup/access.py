@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aihr.setup.departments import DEMO_MANAGER_ACCOUNTS
+from aihr.setup.departments import DEMO_HR_ACCOUNTS, DEMO_MANAGER_ACCOUNTS
 from aihr.setup.workspace import (
     INTERVIEWER_WORKSPACE_NAME,
     MANAGER_WORKSPACE_NAME,
@@ -72,7 +72,7 @@ def ensure_aihr_access() -> None:
     _ensure_roles()
     _ensure_workspace_roles()
     _ensure_doctype_permissions()
-    _assign_demo_manager_role()
+    _assign_demo_roles()
     frappe.clear_cache()
 
 
@@ -133,11 +133,15 @@ def _ensure_doctype_permissions() -> None:
         frappe.clear_cache(doctype=doctype)
 
 
-def _assign_demo_manager_role() -> None:
+def _assign_demo_roles() -> None:
     import frappe
 
-    for profile in DEMO_MANAGER_ACCOUNTS:
-        user_id = profile["user_id"]
+    role_map = {
+        **{profile["user_id"]: (AIHR_HIRING_MANAGER_ROLE, "Employee") for profile in DEMO_MANAGER_ACCOUNTS},
+        **{profile["user_id"]: (HR_USER_ROLE, HR_MANAGER_ROLE, "Employee") for profile in DEMO_HR_ACCOUNTS},
+    }
+
+    for user_id, role_names in role_map.items():
         if not frappe.db.exists("User", user_id):
             continue
 
@@ -145,7 +149,7 @@ def _assign_demo_manager_role() -> None:
         existing_roles = {row.role for row in getattr(user, "roles", []) if getattr(row, "role", None)}
         updated = False
 
-        for role_name in (AIHR_HIRING_MANAGER_ROLE, "Employee"):
+        for role_name in role_names:
             if role_name not in existing_roles:
                 user.append("roles", {"role": role_name})
                 updated = True

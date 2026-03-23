@@ -9,7 +9,7 @@ from aihr.setup.access import (
     SYSTEM_MANAGER_ROLE,
     WORKSPACE_ROLE_BINDINGS,
 )
-from aihr.setup.departments import DEMO_MANAGER_ACCOUNTS
+from aihr.setup.departments import DEMO_HR_ACCOUNTS, DEMO_MANAGER_ACCOUNTS
 from aihr.setup.workspace import (
     INTERVIEWER_WORKSPACE_NAME,
     MANAGER_WORKSPACE_NAME,
@@ -50,6 +50,7 @@ class AccessBlueprintTests(unittest.TestCase):
     def test_demo_manager_seed_accounts_are_available_for_role_assignment(self):
         self.assertIn("manager.demo@aihr.local", {item["user_id"] for item in DEMO_MANAGER_ACCOUNTS})
         self.assertIn("delivery.manager@aihr.local", {item["user_id"] for item in DEMO_MANAGER_ACCOUNTS})
+        self.assertIn("hr.demo@aihr.local", {item["user_id"] for item in DEMO_HR_ACCOUNTS})
 
 
 if __name__ == "__main__":
