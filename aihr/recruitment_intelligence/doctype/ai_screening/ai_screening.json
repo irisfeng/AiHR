@@ -10,6 +10,8 @@
  "field_order": [
   "aihr_review_snapshot_html",
   "screening_details_section",
+  "aihr_candidate_name_snapshot",
+  "aihr_opening_title_snapshot",
   "job_applicant",
   "job_opening",
   "status",
@@ -37,9 +39,22 @@
    "label": "Screening Details"
   },
   {
+   "fieldname": "aihr_candidate_name_snapshot",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Candidate Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "aihr_opening_title_snapshot",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Opening Title",
+   "read_only": 1
+  },
+  {
    "fieldname": "job_applicant",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Job Applicant",
    "options": "Job Applicant",
    "reqd": 1
@@ -48,7 +63,6 @@
    "fetch_from": "job_applicant.job_title",
    "fieldname": "job_opening",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Job Opening",
    "options": "Job Opening",
    "read_only": 1

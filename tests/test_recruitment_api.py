@@ -84,6 +84,20 @@ class RecruitmentApiTests(unittest.TestCase):
     def test_parse_json_blob_returns_empty_dict_on_invalid_payload(self):
         self.assertEqual(recruitment._parse_json_blob("{bad-json"), {})
 
+    def test_build_ai_screening_display_snapshots_prefers_readable_names(self):
+        applicant = SimpleNamespace(
+            name="APP-0001",
+            applicant_name="陈寒",
+            email_id="delivery.chenhan@aihr.local",
+            job_title="HR-OPN-2026-0004",
+        )
+        opening = SimpleNamespace(job_title="交付工程师 - AIHR Demo")
+
+        snapshots = recruitment._build_ai_screening_display_snapshots(applicant, opening)
+
+        self.assertEqual(snapshots["candidate_name"], "陈寒")
+        self.assertEqual(snapshots["opening_title"], "交付工程师 - AIHR Demo")
+
 
 if __name__ == "__main__":
     unittest.main()

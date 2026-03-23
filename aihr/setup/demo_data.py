@@ -6,7 +6,11 @@ import frappe
 from frappe.utils import add_to_date, get_datetime, now_datetime
 
 from aihr.setup.departments import DEMO_MANAGER_ACCOUNTS
-from aihr.services.recruitment_ops import build_interviewer_pack, default_onboarding_activities
+from aihr.services.recruitment_ops import (
+    build_interviewer_pack,
+    build_opening_display_title,
+    default_onboarding_activities,
+)
 from aihr.services.resume_parser import parse_resume_text
 from aihr.services.screening import build_agency_brief, screen_candidate
 
@@ -338,6 +342,8 @@ def _screen_applicant(applicant, requisition, job_opening):
     doc = frappe.get_doc("AI Screening", existing) if existing else frappe.new_doc("AI Screening")
     doc.job_applicant = applicant.name
     doc.job_opening = job_opening.name
+    doc.aihr_candidate_name_snapshot = applicant.applicant_name or applicant.name
+    doc.aihr_opening_title_snapshot = build_opening_display_title(job_opening)
     doc.status = screening["recommended_status"]
     doc.overall_score = screening["overall_score"]
     doc.matched_skills = ", ".join(screening["matched_skills"])

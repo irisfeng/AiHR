@@ -33,6 +33,8 @@ class TranslationCoverageTests(unittest.TestCase):
             "AIHR Manager Review": "AIHR 用人经理中心",
             "AIHR Interview Desk": "AIHR 面试协同中心",
             "Role Snapshot": "岗位概览",
+            "Candidate Name": "候选人姓名",
+            "Opening Title": "岗位名称",
             "Interview Snapshot": "面试概览",
             "Offer Snapshot": "录用概览",
             "Feedback Snapshot": "反馈概览",

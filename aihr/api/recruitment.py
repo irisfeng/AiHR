@@ -2008,9 +2008,13 @@ def _find_existing_job_applicant(job_opening: str, email: str, phone: str, appli
 def _upsert_ai_screening(applicant, parsed_resume: dict[str, Any], screening: dict[str, Any]) -> None:
     existing = frappe.db.exists("AI Screening", {"job_applicant": applicant.name})
     doc = frappe.get_doc("AI Screening", existing) if existing else frappe.new_doc("AI Screening")
+    opening = _get_job_opening_doc(getattr(applicant, "job_title", None))
+    snapshots = _build_ai_screening_display_snapshots(applicant, opening)
 
     doc.job_applicant = applicant.name
     doc.job_opening = applicant.job_title
+    doc.aihr_candidate_name_snapshot = snapshots["candidate_name"]
+    doc.aihr_opening_title_snapshot = snapshots["opening_title"]
     doc.status = screening["recommended_status"]
     doc.overall_score = screening["overall_score"]
     doc.matched_skills = ", ".join(screening["matched_skills"])
@@ -2064,6 +2068,25 @@ def _get_opening_screening_gate(opening) -> dict[str, Any]:
         "aihr_must_have_skills": getattr(requisition, "aihr_must_have_skills", "") if requisition else "",
     }
     return evaluate_screening_readiness(payload)
+
+
+def _build_ai_screening_display_snapshots(applicant, opening=None) -> dict[str, str]:
+    candidate_name = (
+        getattr(applicant, "applicant_name", "")
+        or getattr(applicant, "candidate_name", "")
+        or getattr(applicant, "email_id", "")
+        or getattr(applicant, "name", "候选人")
+    )
+    resolved_opening = opening or _get_job_opening_doc(getattr(applicant, "job_title", None))
+    opening_title = (
+        build_opening_display_title(resolved_opening)
+        if resolved_opening
+        else (getattr(applicant, "job_title", "") or "未关联岗位")
+    )
+    return {
+        "candidate_name": candidate_name,
+        "opening_title": opening_title,
+    }
 
 
 def _csv_to_list(value: str | None) -> list[str]:
