@@ -10,6 +10,8 @@ env/
 node_modules/
 dist/
 build/
+.next/
+*.tsbuildinfo
 *.egg-info/
 coverage/
 htmlcov/
@@ -19,5 +21,6 @@ logs/
 sites/
 .playwright-cli/
 output/playwright/
+apps/api/data/
 .env
 .env.local

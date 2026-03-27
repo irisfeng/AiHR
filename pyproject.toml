@@ -15,6 +15,10 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = []
+api = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.34,<1",
+]
 pdf = ["pypdf>=4.2.0,<5"]
 
 [tool.setuptools.packages.find]
@@ -24,4 +28,3 @@ include = ["aihr*"]
 frappe = ">=15.0.0,<18.0.0"
 erpnext = ">=15.0.0,<18.0.0"
 hrms = ">=15.0.0,<18.0.0"
-

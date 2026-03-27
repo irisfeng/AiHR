@@ -1,0 +1,369 @@
+{
+  "overview": {
+    "title": "AIHR Recruiting OS",
+    "subtitle": "把需求、候选人、面试和 Offer 收在一个工作台里，减少 Excel 搬运和跨群追人。",
+    "stats": [
+      {
+        "label": "本周新增候选人",
+        "value": "148",
+        "delta": "+18%",
+        "tone": "accent"
+      },
+      {
+        "label": "通过初筛",
+        "value": "42",
+        "delta": "28% 转化",
+        "tone": "positive"
+      },
+      {
+        "label": "待收反馈",
+        "value": "9",
+        "delta": "2 场今日到期",
+        "tone": "warning"
+      },
+      {
+        "label": "Offer 推进中",
+        "value": "6",
+        "delta": "4 个本周目标",
+        "tone": "neutral"
+      }
+    ],
+    "pipeline": [
+      {
+        "label": "新需求",
+        "count": 6
+      },
+      {
+        "label": "开放岗位",
+        "count": 14
+      },
+      {
+        "label": "AI 初筛",
+        "count": 42
+      },
+      {
+        "label": "经理复核",
+        "count": 18
+      },
+      {
+        "label": "面试推进",
+        "count": 12
+      },
+      {
+        "label": "Offer",
+        "count": 6
+      }
+    ],
+    "focus": [
+      {
+        "title": "缩短首轮筛选时间",
+        "detail": "优先处理后端、算法和招聘运营三个急招岗位，把待经理复核控制在 24 小时内。",
+        "owner": "HRBP / 刘颖"
+      },
+      {
+        "title": "追回面试反馈",
+        "detail": "今日有 2 场反馈到期，超过 18 小时未回的场次自动升级给招聘经理。",
+        "owner": "招聘协调 / 陈栩"
+      },
+      {
+        "title": "Offer 关单前置",
+        "detail": "Offer 口径统一走模板，入职与薪资交接状态在一个卡片里可见。",
+        "owner": "招聘经理 / 周岩"
+      }
+    ],
+    "priorities": [
+      {
+        "title": "资深后端工程师",
+        "detail": "6 名候选人已过初筛，2 名卡在经理复核。建议今天锁定首轮面试名单。",
+        "tag": "急招"
+      },
+      {
+        "title": "算法平台工程师",
+        "detail": "简历量充足，但匹配度波动大。建议提高必备技能权重，减少低质初筛。",
+        "tag": "优化模型"
+      },
+      {
+        "title": "招聘运营",
+        "detail": "部门正在扩编，面试排期密集。需要一个更轻的候选人摘要视图。",
+        "tag": "提效"
+      }
+    ]
+  },
+  "jobs": [
+    {
+      "id": "job-backend-01",
+      "title": "资深后端工程师",
+      "team": "平台研发",
+      "location": "上海",
+      "mode": "Hybrid",
+      "headcount": 3,
+      "stage": "经理复核",
+      "updatedAt": "今天 18:20",
+      "applicants": 36,
+      "screened": 15,
+      "interviews": 6,
+      "offers": 1,
+      "owner": "周岩",
+      "urgency": "critical",
+      "summary": "核心诉求是 Python、微服务和高并发经验。当前候选人池足够，但一轮面试排期稍慢。",
+      "skills": [
+        "Python",
+        "FastAPI",
+        "PostgreSQL",
+        "Redis",
+        "系统设计"
+      ]
+    },
+    {
+      "id": "job-ml-01",
+      "title": "算法平台工程师",
+      "team": "AI 平台",
+      "location": "杭州",
+      "mode": "Onsite",
+      "headcount": 2,
+      "stage": "AI 初筛",
+      "updatedAt": "今天 17:40",
+      "applicants": 28,
+      "screened": 9,
+      "interviews": 3,
+      "offers": 0,
+      "owner": "沈珂",
+      "urgency": "high",
+      "summary": "岗位画像偏工程化，要求模型服务落地和 GPU 资源治理经验。",
+      "skills": [
+        "LLM",
+        "PyTorch",
+        "MLOps",
+        "Kubernetes",
+        "推理优化"
+      ]
+    },
+    {
+      "id": "job-recruiting-01",
+      "title": "招聘运营",
+      "team": "HR",
+      "location": "深圳",
+      "mode": "Hybrid",
+      "headcount": 1,
+      "stage": "面试推进",
+      "updatedAt": "今天 16:05",
+      "applicants": 41,
+      "screened": 18,
+      "interviews": 7,
+      "offers": 1,
+      "owner": "刘颖",
+      "urgency": "medium",
+      "summary": "需要能把招聘流程产品化和数据化，最好有 ATS 或招聘系统使用经验。",
+      "skills": [
+        "招聘运营",
+        "数据分析",
+        "面试协调",
+        "招聘系统"
+      ]
+    },
+    {
+      "id": "job-ops-01",
+      "title": "运维开发工程师",
+      "team": "基础架构",
+      "location": "北京",
+      "mode": "Hybrid",
+      "headcount": 2,
+      "stage": "开放招聘",
+      "updatedAt": "昨天 20:10",
+      "applicants": 19,
+      "screened": 8,
+      "interviews": 2,
+      "offers": 0,
+      "owner": "顾峰",
+      "urgency": "high",
+      "summary": "团队重点看容器平台治理、CI/CD 稳定性和告警平台经验。",
+      "skills": [
+        "Linux",
+        "Kubernetes",
+        "Terraform",
+        "Prometheus",
+        "DevOps"
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "id": "cand-001",
+      "name": "王书衡",
+      "role": "资深后端工程师",
+      "score": 91,
+      "status": "建议推进",
+      "city": "上海",
+      "experience": "8 年",
+      "owner": "周岩",
+      "source": "猎头",
+      "nextAction": "安排首轮技术面",
+      "skills": [
+        "Python",
+        "FastAPI",
+        "Redis",
+        "Kafka",
+        "PostgreSQL"
+      ],
+      "highlights": [
+        "连续两份工作都负责交易链路后端架构，吞吐和稳定性指标清晰。",
+        "简历里明确写了 Python、Redis、PostgreSQL 和异步任务系统经验。"
+      ],
+      "risks": [
+        "管理经验表述较少，需确认是否符合岗位对跨组协作的要求。"
+      ]
+    },
+    {
+      "id": "cand-002",
+      "name": "梁嘉禾",
+      "role": "算法平台工程师",
+      "score": 84,
+      "status": "待经理复核",
+      "city": "杭州",
+      "experience": "6 年",
+      "owner": "沈珂",
+      "source": "内推",
+      "nextAction": "确认是否进入业务面",
+      "skills": [
+        "PyTorch",
+        "Kubernetes",
+        "Ray",
+        "推理服务"
+      ],
+      "highlights": [
+        "做过模型推理服务化，能讲清吞吐和成本优化方案。",
+        "对 GPU 资源利用率和镜像交付链路有直接经验。"
+      ],
+      "risks": [
+        "对检索增强和多模型编排描述不够，需要现场追问。"
+      ]
+    },
+    {
+      "id": "cand-003",
+      "name": "赵瑾",
+      "role": "招聘运营",
+      "score": 88,
+      "status": "面试中",
+      "city": "深圳",
+      "experience": "5 年",
+      "owner": "刘颖",
+      "source": "Boss 直聘",
+      "nextAction": "收集二面反馈",
+      "skills": [
+        "招聘运营",
+        "数据分析",
+        "面试协调",
+        "ATS"
+      ],
+      "highlights": [
+        "有招聘流程标准化和漏斗分析经验，和岗位需求契合。",
+        "曾独立推动面试排期 SLA 和面试官培训。"
+      ],
+      "risks": [
+        "缺少大型技术团队支持背景，需确认学习曲线。"
+      ]
+    },
+    {
+      "id": "cand-004",
+      "name": "陈子墨",
+      "role": "运维开发工程师",
+      "score": 76,
+      "status": "待补充信息",
+      "city": "北京",
+      "experience": "4 年",
+      "owner": "顾峰",
+      "source": "拉勾",
+      "nextAction": "补问 IaC 和值班经验",
+      "skills": [
+        "Linux",
+        "Kubernetes",
+        "Prometheus"
+      ],
+      "highlights": [
+        "监控和容器平台经历可靠，交付过内部平台能力。"
+      ],
+      "risks": [
+        "Terraform 和 CI/CD 深度不够明确。",
+        "简历中缺少大规模故障处置案例。"
+      ]
+    },
+    {
+      "id": "cand-005",
+      "name": "周闻笙",
+      "role": "资深后端工程师",
+      "score": 69,
+      "status": "保留观察",
+      "city": "苏州",
+      "experience": "7 年",
+      "owner": "周岩",
+      "source": "简历库",
+      "nextAction": "确认到岗周期和城市意向",
+      "skills": [
+        "Java",
+        "Spring",
+        "MySQL",
+        "消息队列"
+      ],
+      "highlights": [
+        "后端基础扎实，业务系统经验丰富。"
+      ],
+      "risks": [
+        "Python 证据不足，与当前岗位画像有偏差。"
+      ]
+    }
+  ],
+  "interviews": [
+    {
+      "id": "int-001",
+      "candidateName": "王书衡",
+      "role": "资深后端工程师",
+      "round": "技术一面",
+      "mode": "视频",
+      "time": "03-28 10:30",
+      "interviewer": "顾峰",
+      "status": "待进行",
+      "decisionWindow": "面试后 12 小时",
+      "packStatus": "已生成",
+      "summary": "重点问系统设计、缓存一致性和异步任务可靠性。"
+    },
+    {
+      "id": "int-002",
+      "candidateName": "梁嘉禾",
+      "role": "算法平台工程师",
+      "round": "业务面",
+      "mode": "现场",
+      "time": "03-28 14:00",
+      "interviewer": "沈珂",
+      "status": "待反馈",
+      "decisionWindow": "今天 20:00 前",
+      "packStatus": "已生成",
+      "summary": "重点看模型服务工程化、资源成本优化和跨团队协作。"
+    },
+    {
+      "id": "int-003",
+      "candidateName": "赵瑾",
+      "role": "招聘运营",
+      "round": "二面",
+      "mode": "视频",
+      "time": "03-28 16:30",
+      "interviewer": "刘颖",
+      "status": "待反馈",
+      "decisionWindow": "今天 21:00 前",
+      "packStatus": "已生成",
+      "summary": "重点追问招聘漏斗指标、用人经理协同和 ATS 实战。"
+    },
+    {
+      "id": "int-004",
+      "candidateName": "陈子墨",
+      "role": "运维开发工程师",
+      "round": "技术一面",
+      "mode": "视频",
+      "time": "03-29 11:00",
+      "interviewer": "顾峰",
+      "status": "已安排",
+      "decisionWindow": "面试后 24 小时",
+      "packStatus": "待补充",
+      "summary": "先确认值班经验、IaC 深度和变更治理。"
+    }
+  ]
+}
