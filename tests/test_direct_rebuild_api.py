@@ -1,10 +1,25 @@
+import io
 import tempfile
+import time
 import unittest
 from pathlib import Path
+from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 
 from apps.api.app import main, store
+
+
+DOCX_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>张三</w:t></w:r></w:p>
+    <w:p><w:r><w:t>现居上海</w:t></w:r></w:p>
+    <w:p><w:r><w:t>6年 Python、FastAPI、PostgreSQL 经验。</w:t></w:r></w:p>
+    <w:p><w:r><w:t>zhangsan@example.com</w:t></w:r></w:p>
+  </w:body>
+</w:document>
+"""
 
 
 class DirectRebuildApiTests(unittest.TestCase):
@@ -224,6 +239,86 @@ class DirectRebuildApiTests(unittest.TestCase):
         timeline = self.client.get("/api/candidates/cand-003/timeline").json()
         self.assertEqual(timeline[0]["title"], "薪酬交接已就绪")
         self.assertEqual(timeline[0]["actor"], "陈琳")
+
+    def test_resume_intake_job_parses_zip_and_creates_candidates(self):
+        response = self.client.post(
+            "/api/intake-jobs",
+            files={"archive": ("bundle.zip", self._build_resume_bundle(), "application/zip")},
+            data={
+                "job_id": "job-backend-01",
+                "owner": "周岩",
+                "source": "ZIP 简历包",
+            },
+        )
+        self.assertEqual(response.status_code, 202)
+
+        job_id = response.json()["id"]
+        job_payload = self._wait_for_intake_job(job_id)
+        self.assertEqual(job_payload["status"], "Completed")
+        self.assertEqual(job_payload["summary"]["parsedCount"], 2)
+        self.assertEqual(job_payload["summary"]["unsupportedCount"], 1)
+        self.assertEqual(job_payload["summary"]["createdCandidateCount"], 2)
+
+        parsed_items = [item for item in job_payload["items"] if item["status"] == "Parsed"]
+        self.assertEqual(len(parsed_items), 2)
+        self.assertTrue(all(item["candidateId"] for item in parsed_items))
+
+        candidates = self.client.get("/api/candidates").json()
+        created_names = {item["name"] for item in candidates}
+        self.assertIn("张三", created_names)
+        self.assertIn("李四", created_names)
+
+        jobs = self.client.get("/api/jobs").json()
+        backend_job = next(item for item in jobs if item["id"] == "job-backend-01")
+        self.assertEqual(backend_job["applicants"], 38)
+        self.assertEqual(backend_job["screened"], 17)
+
+    def test_resume_intake_job_detail_lists_created_candidates(self):
+        created = self.client.post(
+            "/api/intake-jobs",
+            files={"archive": ("bundle.zip", self._build_resume_bundle(), "application/zip")},
+            data={
+                "job_id": "job-backend-01",
+                "owner": "周岩",
+                "source": "ZIP 简历包",
+            },
+        )
+        self.assertEqual(created.status_code, 202)
+
+        job_id = created.json()["id"]
+        job_payload = self._wait_for_intake_job(job_id)
+        parsed_item = next(item for item in job_payload["items"] if item["fileName"] == "resume.docx")
+        self.assertEqual(parsed_item["parserEngine"], "DOCX")
+        self.assertEqual(parsed_item["parsedResume"]["name"], "张三")
+        self.assertTrue(parsed_item["candidateId"])
+
+    def _wait_for_intake_job(self, job_id: str) -> dict:
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            payload = self.client.get(f"/api/intake-jobs/{job_id}")
+            self.assertEqual(payload.status_code, 200)
+            body = payload.json()
+            if body["status"] in {"Completed", "Failed"}:
+                return body
+            time.sleep(0.05)
+        self.fail(f"Timed out waiting for intake job {job_id}")
+
+    @staticmethod
+    def _build_resume_bundle() -> bytes:
+        buffer = io.BytesIO()
+        with ZipFile(buffer, "w") as bundle:
+            bundle.writestr("resume.docx", DirectRebuildApiTests._build_docx_bytes())
+            bundle.writestr("resume.txt", "李四\n现居杭州\n4年 Python、Redis、PostgreSQL 经验\nlisi@example.com")
+            bundle.writestr("notes.xlsx", b"binary")
+        return buffer.getvalue()
+
+    @staticmethod
+    def _build_docx_bytes() -> bytes:
+        buffer = io.BytesIO()
+        with ZipFile(buffer, "w") as archive:
+            archive.writestr("[Content_Types].xml", "")
+            archive.writestr("word/document.xml", DOCX_XML)
+        return buffer.getvalue()
 
 
 if __name__ == "__main__":

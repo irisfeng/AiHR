@@ -12,11 +12,15 @@ from typing import Any
 from aihr.services.recruitment_ops import (
     build_offer_handoff_notes,
     build_payroll_handoff_summary,
+    get_screening_next_action,
     get_offer_next_action,
 )
+from aihr.services.resume_intake import extract_resume_archive
+from aihr.services.screening import screen_candidate
 
 DEMO_DATA_FILE = Path(__file__).resolve().parents[2] / "shared" / "demo-data.json"
 DEFAULT_DATABASE_PATH = Path(__file__).resolve().parents[1] / "data" / "aihr.sqlite3"
+DEFAULT_INTAKE_ARCHIVE_DIR = Path(__file__).resolve().parents[1] / "data" / "resume_intake"
 DATABASE_PATH_OVERRIDE: Path | None = None
 
 
@@ -162,6 +166,38 @@ def bootstrap_database() -> None:
                 next_action TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS resume_intake_jobs (
+                id TEXT PRIMARY KEY,
+                archive_name TEXT NOT NULL,
+                archive_path TEXT NOT NULL,
+                job_id TEXT NOT NULL,
+                job_title TEXT NOT NULL,
+                owner TEXT NOT NULL,
+                source_label TEXT NOT NULL,
+                status TEXT NOT NULL,
+                total_files INTEGER NOT NULL,
+                parsed_count INTEGER NOT NULL,
+                unsupported_count INTEGER NOT NULL,
+                failed_count INTEGER NOT NULL,
+                created_candidate_count INTEGER NOT NULL,
+                error_message TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS resume_intake_items (
+                id TEXT PRIMARY KEY,
+                intake_job_id TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                file_extension TEXT NOT NULL,
+                status TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                parser_engine TEXT NOT NULL,
+                parsed_resume_json TEXT NOT NULL,
+                candidate_id TEXT NOT NULL,
+                created_at TEXT NOT NULL
             );
             """
         )
@@ -353,6 +389,37 @@ def list_offers(connection: sqlite3.Connection) -> list[dict[str, Any]]:
         """
     ).fetchall()
     return [_offer_from_row(row) for row in rows]
+
+
+def list_resume_intake_jobs(connection: sqlite3.Connection, limit: int = 12) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """
+        SELECT * FROM resume_intake_jobs
+        ORDER BY updated_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return [_resume_intake_job_from_row(row) for row in rows]
+
+
+def get_resume_intake_job(connection: sqlite3.Connection, intake_job_id: str) -> dict[str, Any]:
+    row = connection.execute(
+        "SELECT * FROM resume_intake_jobs WHERE id = ?",
+        (intake_job_id,),
+    ).fetchone()
+    if not row:
+        raise LookupError(f"Resume intake job not found: {intake_job_id}")
+
+    items = connection.execute(
+        """
+        SELECT * FROM resume_intake_items
+        WHERE intake_job_id = ?
+        ORDER BY created_at ASC
+        """,
+        (intake_job_id,),
+    ).fetchall()
+    return _resume_intake_job_from_row(row, items=[_resume_intake_item_from_row(item) for item in items])
 
 
 def list_candidate_timeline(connection: sqlite3.Connection, candidate_id: str) -> list[dict[str, Any]]:
@@ -875,6 +942,181 @@ def mark_offer_payroll_ready(connection: sqlite3.Connection, offer_id: str) -> d
     }
 
 
+def create_resume_intake_job(
+    connection: sqlite3.Connection,
+    payload: Mapping[str, Any],
+    archive_bytes: bytes,
+) -> dict[str, Any]:
+    job_row = connection.execute("SELECT * FROM jobs WHERE id = ?", (str(payload["job_id"]).strip(),)).fetchone()
+    if not job_row:
+        raise LookupError(f"Job not found: {payload['job_id']}")
+
+    intake_job_id = payload.get("id") or f"intake-{datetime.now().strftime('%Y%m%d%H%M%S%f')[-12:]}"
+    archive_name = str(payload.get("archive_name") or "resume_bundle.zip").strip() or "resume_bundle.zip"
+    now = _now_iso()
+    archive_dir = DEFAULT_INTAKE_ARCHIVE_DIR / intake_job_id
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = archive_dir / archive_name
+    archive_path.write_bytes(archive_bytes)
+
+    connection.execute(
+        """
+        INSERT INTO resume_intake_jobs (
+            id, archive_name, archive_path, job_id, job_title, owner, source_label, status,
+            total_files, parsed_count, unsupported_count, failed_count, created_candidate_count,
+            error_message, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            intake_job_id,
+            archive_name,
+            str(archive_path),
+            job_row["id"],
+            job_row["title"],
+            str(payload.get("owner") or job_row["owner"] or "待分配").strip(),
+            str(payload.get("source") or "ZIP 简历包").strip(),
+            "Queued",
+            0,
+            0,
+            0,
+            0,
+            0,
+            "",
+            now,
+            now,
+        ),
+    )
+    connection.commit()
+    return _resume_intake_job_from_row(connection.execute("SELECT * FROM resume_intake_jobs WHERE id = ?", (intake_job_id,)).fetchone())
+
+
+def run_resume_intake_job(intake_job_id: str) -> None:
+    try:
+        with db_session() as connection:
+            job_row = connection.execute("SELECT * FROM resume_intake_jobs WHERE id = ?", (intake_job_id,)).fetchone()
+            if not job_row:
+                raise LookupError(f"Resume intake job not found: {intake_job_id}")
+
+            _update_resume_intake_job_status(connection, intake_job_id, "Running")
+            archive_path = Path(job_row["archive_path"])
+            job_target = connection.execute("SELECT * FROM jobs WHERE id = ?", (job_row["job_id"],)).fetchone()
+            if not job_target:
+                raise LookupError(f"Job not found for intake job: {job_row['job_id']}")
+
+            extracted_items = extract_resume_archive(archive_path, skill_lexicon=_json_load(job_target["skills_json"]))
+            counters = {
+                "total_files": len(extracted_items),
+                "parsed_count": 0,
+                "unsupported_count": 0,
+                "failed_count": 0,
+                "created_candidate_count": 0,
+            }
+
+            for index, item in enumerate(extracted_items, start=1):
+                item_status = str(item.get("status") or "Failed")
+                reason = str(item.get("reason") or "")
+                candidate_id = ""
+                parsed_resume = item.get("parsed_resume") or {}
+                parser_engine = str(item.get("parser_engine") or "")
+
+                if item_status == "Parsed":
+                    counters["parsed_count"] += 1
+                    try:
+                        created_candidate = _create_candidate_from_resume_item(
+                            connection,
+                            parsed_item=item,
+                            intake_job_row=job_row,
+                            job_row=job_target,
+                        )
+                        candidate_id = created_candidate["id"]
+                        counters["created_candidate_count"] += 1
+                    except Exception as exc:
+                        item_status = "Failed"
+                        reason = f"候选人写入失败：{exc}"
+                        counters["failed_count"] += 1
+                elif item_status == "Unsupported":
+                    counters["unsupported_count"] += 1
+                else:
+                    counters["failed_count"] += 1
+
+                connection.execute(
+                    """
+                    INSERT INTO resume_intake_items (
+                        id, intake_job_id, file_name, file_extension, status, reason,
+                        parser_engine, parsed_resume_json, candidate_id, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        f"intake-item-{intake_job_id}-{index}",
+                        intake_job_id,
+                        str(item.get("file_name") or ""),
+                        str(item.get("file_extension") or ""),
+                        item_status,
+                        reason,
+                        parser_engine,
+                        _json_dump(parsed_resume),
+                        candidate_id,
+                        _now_iso(),
+                    ),
+                )
+
+            if counters["created_candidate_count"]:
+                connection.execute(
+                    """
+                    UPDATE jobs
+                    SET applicants = applicants + ?,
+                        screened = screened + ?,
+                        updated_at = ?,
+                        updated_at_label = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        counters["created_candidate_count"],
+                        counters["created_candidate_count"],
+                        _now_iso(),
+                        _updated_label(),
+                        job_target["id"],
+                    ),
+                )
+
+            connection.execute(
+                """
+                UPDATE resume_intake_jobs
+                SET status = ?,
+                    total_files = ?,
+                    parsed_count = ?,
+                    unsupported_count = ?,
+                    failed_count = ?,
+                    created_candidate_count = ?,
+                    error_message = '',
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    "Completed",
+                    counters["total_files"],
+                    counters["parsed_count"],
+                    counters["unsupported_count"],
+                    counters["failed_count"],
+                    counters["created_candidate_count"],
+                    _now_iso(),
+                    intake_job_id,
+                ),
+            )
+            connection.commit()
+    except Exception as exc:
+        with db_session() as connection:
+            connection.execute(
+                """
+                UPDATE resume_intake_jobs
+                SET status = ?, error_message = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                ("Failed", str(exc), _now_iso(), intake_job_id),
+            )
+            connection.commit()
+
+
 def _job_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
@@ -964,6 +1206,41 @@ def _offer_from_row(row: sqlite3.Row) -> dict[str, Any]:
         "handoffSummary": row["handoff_summary"],
         "payrollHandoffSummary": row["payroll_handoff_summary"],
         "nextAction": row["next_action"],
+    }
+
+
+def _resume_intake_job_from_row(row: sqlite3.Row, *, items: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "archiveName": row["archive_name"],
+        "jobId": row["job_id"],
+        "jobTitle": row["job_title"],
+        "owner": row["owner"],
+        "source": row["source_label"],
+        "status": row["status"],
+        "summary": {
+            "totalFiles": row["total_files"],
+            "parsedCount": row["parsed_count"],
+            "unsupportedCount": row["unsupported_count"],
+            "failedCount": row["failed_count"],
+            "createdCandidateCount": row["created_candidate_count"],
+        },
+        "errorMessage": row["error_message"],
+        "updatedAt": row["updated_at"],
+        "items": items or [],
+    }
+
+
+def _resume_intake_item_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "fileName": row["file_name"],
+        "fileExtension": row["file_extension"],
+        "status": row["status"],
+        "reason": row["reason"],
+        "parserEngine": row["parser_engine"],
+        "parsedResume": _json_load(row["parsed_resume_json"]),
+        "candidateId": row["candidate_id"],
     }
 
 
@@ -1076,6 +1353,18 @@ def _append_candidate_timeline_event(
     )
 
 
+def _update_resume_intake_job_status(connection: sqlite3.Connection, intake_job_id: str, status: str) -> None:
+    connection.execute(
+        """
+        UPDATE resume_intake_jobs
+        SET status = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (status, _now_iso(), intake_job_id),
+    )
+    connection.commit()
+
+
 def _find_candidate_row_by_name_role(connection: sqlite3.Connection, name: str, role: str) -> sqlite3.Row | None:
     return connection.execute(
         """
@@ -1086,6 +1375,53 @@ def _find_candidate_row_by_name_role(connection: sqlite3.Connection, name: str, 
         """,
         (name, role),
     ).fetchone()
+
+
+def _create_candidate_from_resume_item(
+    connection: sqlite3.Connection,
+    *,
+    parsed_item: Mapping[str, Any],
+    intake_job_row: sqlite3.Row,
+    job_row: sqlite3.Row,
+) -> dict[str, Any]:
+    parsed_resume = parsed_item.get("parsed_resume") or {}
+    screening = screen_candidate(
+        parsed_resume=parsed_resume,
+        job_requirements=_build_job_requirements(job_row),
+        preferred_skills=" ".join(_json_load(job_row["skills_json"])),
+        preferred_city=job_row["location"],
+    )
+    recommended_status = str(screening.get("recommended_status") or "Ready for Review")
+    name = str(parsed_resume.get("name") or Path(str(parsed_item.get("file_name") or "候选人")).stem).strip()
+    years = float(parsed_resume.get("years_of_experience", 0) or 0)
+    experience = f"{years:g} 年" if years else "待确认"
+    candidate = create_candidate(
+        connection,
+        {
+            "name": name,
+            "role": job_row["title"],
+            "city": str(parsed_resume.get("city") or "待确认").strip(),
+            "experience": experience,
+            "owner": intake_job_row["owner"],
+            "source": intake_job_row["source_label"],
+            "status": _candidate_status_from_screening_status(recommended_status),
+            "next_action": get_screening_next_action(recommended_status),
+            "score": int(screening.get("overall_score", 0) or 0),
+            "skills": parsed_resume.get("skills") or [],
+            "highlights": screening.get("strengths") or [],
+            "risks": screening.get("risks") or [],
+        },
+    )
+    _append_candidate_timeline_event(
+        connection,
+        candidate_id=candidate["id"],
+        event_type="resume_intake_completed",
+        title="ZIP 简历导入完成",
+        detail=f"文件：{parsed_item.get('file_name') or '未知文件'}。自动初筛分数：{screening.get('overall_score', 0)}/100。",
+        actor=intake_job_row["owner"],
+        created_at=_now_iso(),
+    )
+    return candidate
 
 
 def _build_feedback_timeline_detail(summary: str, strengths: list[str], concerns: list[str], next_step: str) -> str:
@@ -1127,6 +1463,27 @@ def _candidate_status_from_offer_status(status: str) -> str:
         "Accepted": "Offer 已接受",
         "Rejected": "Offer 未接受",
     }.get(status, "Offer 推进中")
+
+
+def _candidate_status_from_screening_status(status: str) -> str:
+    return {
+        "Advance": "建议推进",
+        "Ready for Review": "待经理复核",
+        "Hold": "建议暂缓",
+    }.get(status, "待经理复核")
+
+
+def _build_job_requirements(job_row: sqlite3.Row) -> str:
+    skills = _json_load(job_row["skills_json"])
+    return " ".join(
+        part
+        for part in [
+            str(job_row["title"] or ""),
+            str(job_row["summary"] or ""),
+            " ".join(skills),
+        ]
+        if part
+    )
 
 
 def _table_count(connection: sqlite3.Connection, table_name: str) -> int:

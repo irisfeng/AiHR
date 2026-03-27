@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -23,16 +24,20 @@ from .store import (
     create_interview,
     create_job,
     create_offer,
+    create_resume_intake_job,
     get_app_state,
     get_database_path,
     get_db,
+    get_resume_intake_job,
     list_candidate_timeline,
     list_candidates,
     list_interviews,
     list_jobs,
     list_offers,
+    list_resume_intake_jobs,
     load_demo_seed,
     mark_offer_payroll_ready,
+    run_resume_intake_job,
 )
 
 
@@ -285,6 +290,46 @@ def post_offer_payroll_ready(offer_id: str, connection: sqlite3.Connection = Dep
         return mark_offer_payroll_ready(connection, offer_id)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@app.get("/api/intake-jobs")
+def get_intake_jobs(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
+    return list_resume_intake_jobs(connection)
+
+
+@app.get("/api/intake-jobs/{intake_job_id}")
+def get_intake_job(intake_job_id: str, connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
+    try:
+        return get_resume_intake_job(connection, intake_job_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@app.post("/api/intake-jobs", status_code=status.HTTP_202_ACCEPTED)
+async def post_intake_job(
+    archive: UploadFile = File(...),
+    job_id: str = Form(...),
+    owner: str = Form(""),
+    source: str = Form("ZIP 简历包"),
+    connection: sqlite3.Connection = Depends(get_db),
+) -> dict[str, Any]:
+    archive_bytes = await archive.read()
+    try:
+        payload = create_resume_intake_job(
+            connection,
+            {
+                "archive_name": archive.filename or "resume_bundle.zip",
+                "job_id": job_id,
+                "owner": owner,
+                "source": source,
+            },
+            archive_bytes,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    threading.Thread(target=run_resume_intake_job, args=(payload["id"],), daemon=True).start()
+    return payload
 
 
 @app.post("/api/screening/preview")

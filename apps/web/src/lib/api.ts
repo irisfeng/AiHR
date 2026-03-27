@@ -77,6 +77,37 @@ export interface OfferCreateRequest {
   payroll_owner: string;
 }
 
+export interface ResumeIntakeJobItem {
+  id: string;
+  fileName: string;
+  fileExtension: string;
+  status: string;
+  reason: string;
+  parserEngine: string;
+  parsedResume: Record<string, unknown>;
+  candidateId: string;
+}
+
+export interface ResumeIntakeJobRecord {
+  id: string;
+  archiveName: string;
+  jobId: string;
+  jobTitle: string;
+  owner: string;
+  source: string;
+  status: string;
+  summary: {
+    totalFiles: number;
+    parsedCount: number;
+    unsupportedCount: number;
+    failedCount: number;
+    createdCandidateCount: number;
+  };
+  errorMessage: string;
+  updatedAt: string;
+  items: ResumeIntakeJobItem[];
+}
+
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
 
 export const serverApiBaseUrl =
@@ -134,6 +165,14 @@ export async function getCandidateTimeline(
     return await fetchJson<CandidateTimelineEvent[]>(`/api/candidates/${candidate.id}/timeline`);
   } catch {
     return fallbackTimeline;
+  }
+}
+
+export async function getResumeIntakeJobs(): Promise<ResumeIntakeJobRecord[]> {
+  try {
+    return await fetchJson<ResumeIntakeJobRecord[]>("/api/intake-jobs");
+  } catch {
+    return [];
   }
 }
 

@@ -1,7 +1,8 @@
 import { CandidateIntakeWorkbench } from "@/components/candidate-intake-workbench";
+import { ResumeIntakeWorkbench } from "@/components/resume-intake-workbench";
 import { ScreeningPreviewWorkbench } from "@/components/screening-preview-workbench";
 import { AppShell, Panel, StatusPill, TagList } from "@/components/chrome";
-import { deriveWorkspaceSlices, getCandidateTimeline, getRecruitmentWorkspaceData } from "@/lib/api";
+import { deriveWorkspaceSlices, getCandidateTimeline, getRecruitmentWorkspaceData, getResumeIntakeJobs } from "@/lib/api";
 
 function scoreTone(score: number): "positive" | "accent" | "warning" {
   if (score >= 85) {
@@ -20,6 +21,7 @@ export default async function CandidatesPage() {
   const { topCandidates } = deriveWorkspaceSlices(data);
   const primaryCandidate = topCandidates[0];
   const primaryTimeline = primaryCandidate ? await getCandidateTimeline(primaryCandidate, data.interviews) : [];
+  const intakeJobs = await getResumeIntakeJobs();
 
   return (
     <AppShell
@@ -91,6 +93,10 @@ export default async function CandidatesPage() {
             ) : (
               <p className="subtle-text">还没有可预演的候选人。先导入简历或接通实时 API 后再运行初筛预演。</p>
             )}
+          </Panel>
+
+          <Panel title="ZIP 简历导入" caption="上传 ZIP 后后台解析并自动写入候选人，不再手动拆包复制。">
+            <ResumeIntakeWorkbench jobs={data.jobs} recentJobs={intakeJobs} disabled={data.source !== "live"} />
           </Panel>
 
           <Panel
