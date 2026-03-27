@@ -365,5 +365,39 @@
       "packStatus": "待补充",
       "summary": "先确认值班经验、IaC 深度和变更治理。"
     }
+  ],
+  "offers": [
+    {
+      "id": "offer-001",
+      "candidateId": "cand-001",
+      "jobId": "job-backend-01",
+      "candidateName": "王书衡",
+      "openingTitle": "资深后端工程师",
+      "status": "Accepted",
+      "onboardingOwner": "周岩",
+      "payrollOwner": "林薇",
+      "payrollHandoffStatus": "Not Started",
+      "salaryExpectation": "45k x 15",
+      "compensationNotes": "待确认试用期薪资口径、补贴项和到岗日期。",
+      "handoffSummary": "AIHR Offer 交接摘要\n候选人：王书衡\n岗位：资深后端工程师\nOffer 状态：Accepted\n入职交接负责人：周岩\n薪酬交接状态：Not Started\n候选人薪资期望：45k x 15\n\n当前说明：\n待确认试用期薪资口径、补贴项和到岗日期。\n\n建议动作：\n- 补齐入职资料并准备薪酬交接\n- 核对 Offer 条款、到岗时间与入职资料清单。\n- 将最终薪酬信息同步给入职与薪资建档负责人。",
+      "payrollHandoffSummary": "AIHR 薪酬交接摘要\n候选人：王书衡\n岗位：资深后端工程师\n薪酬负责人：林薇\n当前状态：Not Started\n候选人期望：45k x 15\n岗位预算：待补充\n\n薪酬备注：\n待确认试用期薪资口径、补贴项和到岗日期。\n\n建议动作：\n- 先确认薪资结构、试用期和发薪口径\n- 核对最终薪资、试用期规则、补贴项和到岗日期。\n- 确认数据已经同步到入职交接和员工主档。",
+      "nextAction": "补齐入职资料并准备薪酬交接"
+    },
+    {
+      "id": "offer-002",
+      "candidateId": "cand-003",
+      "jobId": "job-recruiting-01",
+      "candidateName": "赵瑾",
+      "openingTitle": "招聘运营",
+      "status": "Awaiting Response",
+      "onboardingOwner": "刘颖",
+      "payrollOwner": "陈琳",
+      "payrollHandoffStatus": "Not Started",
+      "salaryExpectation": "28k x 14",
+      "compensationNotes": "待确认候选人反馈、到岗日期和补贴说明。",
+      "handoffSummary": "AIHR Offer 交接摘要\n候选人：赵瑾\n岗位：招聘运营\nOffer 状态：Awaiting Response\n入职交接负责人：刘颖\n薪酬交接状态：Not Started\n候选人薪资期望：28k x 14\n\n当前说明：\n待确认候选人反馈、到岗日期和补贴说明。\n\n建议动作：\n- 跟进候选人反馈并确认到岗时间\n- 核对 Offer 条款、到岗时间与入职资料清单。\n- 将最终薪酬信息同步给入职与薪资建档负责人。",
+      "payrollHandoffSummary": "AIHR 薪酬交接摘要\n候选人：赵瑾\n岗位：招聘运营\n薪酬负责人：陈琳\n当前状态：Not Started\n候选人期望：28k x 14\n岗位预算：待补充\n\n薪酬备注：\n待确认候选人反馈、到岗日期和补贴说明。\n\n建议动作：\n- 先确认薪资结构、试用期和发薪口径\n- 核对最终薪资、试用期规则、补贴项和到岗日期。\n- 确认数据已经同步到入职交接和员工主档。",
+      "nextAction": "跟进候选人反馈并确认到岗时间"
+    }
   ]
 }

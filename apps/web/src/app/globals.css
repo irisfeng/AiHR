@@ -256,6 +256,16 @@ button {
   cursor: pointer;
 }
 
+.secondary-button {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(183, 95, 45, 0.18);
+  background: rgba(255, 248, 240, 0.88);
+  color: var(--accent-deep);
+  cursor: pointer;
+}
+
 .hero-card {
   display: flex;
   justify-content: space-between;
@@ -556,7 +566,8 @@ button {
 
 .text-input:disabled,
 .text-area:disabled,
-.primary-button:disabled {
+.primary-button:disabled,
+.secondary-button:disabled {
   cursor: not-allowed;
   opacity: 0.66;
 }

@@ -22,6 +22,7 @@ from .store import (
     create_candidate,
     create_interview,
     create_job,
+    create_offer,
     get_app_state,
     get_database_path,
     get_db,
@@ -29,7 +30,9 @@ from .store import (
     list_candidates,
     list_interviews,
     list_jobs,
+    list_offers,
     load_demo_seed,
+    mark_offer_payroll_ready,
 )
 
 
@@ -128,6 +131,17 @@ class InterviewFeedbackRequest(BaseModel):
     concerns: list[str] = Field(default_factory=list)
     next_step: str = ""
     actor: str = ""
+
+
+class OfferCreateRequest(BaseModel):
+    candidate_id: str
+    job_id: str
+    status: str = "Accepted"
+    salary_expectation: str = ""
+    compensation_notes: str = ""
+    onboarding_owner: str = ""
+    payroll_owner: str = ""
+    payroll_handoff_status: str = "Not Started"
 
 
 @app.get("/healthz")
@@ -248,6 +262,27 @@ def post_interview_feedback(
 ) -> dict[str, Any]:
     try:
         return apply_interview_feedback(connection, interview_id, payload.model_dump())
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@app.get("/api/offers")
+def get_offers(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
+    return list_offers(connection)
+
+
+@app.post("/api/offers", status_code=status.HTTP_201_CREATED)
+def post_offer(payload: OfferCreateRequest, connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
+    try:
+        return create_offer(connection, payload.model_dump())
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@app.post("/api/offers/{offer_id}/payroll-ready")
+def post_offer_payroll_ready(offer_id: str, connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
+    try:
+        return mark_offer_payroll_ready(connection, offer_id)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

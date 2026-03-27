@@ -9,6 +9,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from aihr.services.recruitment_ops import (
+    build_offer_handoff_notes,
+    build_payroll_handoff_summary,
+    get_offer_next_action,
+)
+
 DEMO_DATA_FILE = Path(__file__).resolve().parents[2] / "shared" / "demo-data.json"
 DEFAULT_DATABASE_PATH = Path(__file__).resolve().parents[1] / "data" / "aihr.sqlite3"
 DATABASE_PATH_OVERRIDE: Path | None = None
@@ -138,6 +144,25 @@ def bootstrap_database() -> None:
                 happened_at_label TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS offers (
+                id TEXT PRIMARY KEY,
+                candidate_id TEXT NOT NULL,
+                job_id TEXT NOT NULL,
+                candidate_name TEXT NOT NULL,
+                opening_title TEXT NOT NULL,
+                status TEXT NOT NULL,
+                onboarding_owner TEXT NOT NULL,
+                payroll_owner TEXT NOT NULL,
+                payroll_handoff_status TEXT NOT NULL,
+                salary_expectation TEXT NOT NULL,
+                compensation_notes TEXT NOT NULL,
+                handoff_summary TEXT NOT NULL,
+                payroll_handoff_summary TEXT NOT NULL,
+                next_action TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
             """
         )
         seed_if_empty(connection)
@@ -240,6 +265,39 @@ def seed_if_empty(connection: sqlite3.Connection) -> None:
             ],
         )
 
+    if _table_count(connection, "offers") == 0:
+        connection.executemany(
+            """
+            INSERT INTO offers (
+                id, candidate_id, job_id, candidate_name, opening_title, status,
+                onboarding_owner, payroll_owner, payroll_handoff_status, salary_expectation,
+                compensation_notes, handoff_summary, payroll_handoff_summary, next_action,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    item["id"],
+                    item["candidateId"],
+                    item["jobId"],
+                    item["candidateName"],
+                    item["openingTitle"],
+                    item["status"],
+                    item["onboardingOwner"],
+                    item["payrollOwner"],
+                    item["payrollHandoffStatus"],
+                    item["salaryExpectation"],
+                    item["compensationNotes"],
+                    item["handoffSummary"],
+                    item["payrollHandoffSummary"],
+                    item["nextAction"],
+                    now,
+                    now,
+                )
+                for item in seed["offers"]
+            ],
+        )
+
     if _table_count(connection, "app_state") == 0:
         overview = seed["overview"]
         connection.executemany(
@@ -285,6 +343,16 @@ def list_interviews(connection: sqlite3.Connection) -> list[dict[str, Any]]:
         """
     ).fetchall()
     return [_interview_from_row(row) for row in rows]
+
+
+def list_offers(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """
+        SELECT * FROM offers
+        ORDER BY updated_at DESC
+        """
+    ).fetchall()
+    return [_offer_from_row(row) for row in rows]
 
 
 def list_candidate_timeline(connection: sqlite3.Connection, candidate_id: str) -> list[dict[str, Any]]:
@@ -637,6 +705,176 @@ def apply_interview_feedback(connection: sqlite3.Connection, interview_id: str, 
     }
 
 
+def create_offer(connection: sqlite3.Connection, payload: Mapping[str, Any]) -> dict[str, Any]:
+    candidate_id = str(payload["candidate_id"]).strip()
+    job_id = str(payload["job_id"]).strip()
+    candidate_row = connection.execute("SELECT * FROM candidates WHERE id = ?", (candidate_id,)).fetchone()
+    if not candidate_row:
+        raise LookupError(f"Candidate not found: {candidate_id}")
+    job_row = connection.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if not job_row:
+        raise LookupError(f"Job not found: {job_id}")
+
+    now = _now_iso()
+    offer_id = payload.get("id") or f"offer-{datetime.now().strftime('%Y%m%d%H%M%S%f')[-12:]}"
+    status = str(payload.get("status") or "Accepted").strip()
+    onboarding_owner = str(payload.get("onboarding_owner") or candidate_row["owner"] or job_row["owner"] or "待分配").strip()
+    payroll_owner = str(payload.get("payroll_owner") or onboarding_owner).strip()
+    payroll_handoff_status = str(payload.get("payroll_handoff_status") or "Not Started").strip()
+    salary_expectation = str(payload.get("salary_expectation") or "待补充").strip()
+    compensation_notes = str(payload.get("compensation_notes") or "待确认薪资构成、试用期和补贴项。").strip()
+    next_action = get_offer_next_action(status, payroll_handoff_status)
+    handoff_summary = build_offer_handoff_notes(
+        candidate_name=candidate_row["name"],
+        opening_title=job_row["title"],
+        offer_status=status,
+        onboarding_owner=onboarding_owner,
+        payroll_handoff_status=payroll_handoff_status,
+        salary_expectation=salary_expectation,
+        compensation_notes=compensation_notes,
+    )
+    payroll_handoff_summary = build_payroll_handoff_summary(
+        candidate_name=candidate_row["name"],
+        opening_title=job_row["title"],
+        payroll_owner=payroll_owner,
+        payroll_handoff_status=payroll_handoff_status,
+        salary_expectation=salary_expectation,
+        opening_salary_range="",
+        compensation_notes=compensation_notes,
+    )
+
+    connection.execute(
+        """
+        INSERT INTO offers (
+            id, candidate_id, job_id, candidate_name, opening_title, status,
+            onboarding_owner, payroll_owner, payroll_handoff_status, salary_expectation,
+            compensation_notes, handoff_summary, payroll_handoff_summary, next_action,
+            created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            offer_id,
+            candidate_id,
+            job_id,
+            candidate_row["name"],
+            job_row["title"],
+            status,
+            onboarding_owner,
+            payroll_owner,
+            payroll_handoff_status,
+            salary_expectation,
+            compensation_notes,
+            handoff_summary,
+            payroll_handoff_summary,
+            next_action,
+            now,
+            now,
+        ),
+    )
+    connection.execute(
+        """
+        UPDATE jobs
+        SET offers = offers + 1,
+            updated_at = ?,
+            updated_at_label = ?
+        WHERE id = ?
+        """,
+        (now, _updated_label(), job_id),
+    )
+    connection.execute(
+        """
+        UPDATE candidates
+        SET status = ?, next_action = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (_candidate_status_from_offer_status(status), next_action, now, candidate_id),
+    )
+    _append_candidate_timeline_event(
+        connection,
+        candidate_id=candidate_id,
+        event_type="offer_created",
+        title="Offer 交接已创建",
+        detail=f"状态：{status}。薪资期望：{salary_expectation}。下一步：{next_action}",
+        actor=onboarding_owner,
+        created_at=now,
+    )
+    connection.commit()
+    return _offer_from_row(connection.execute("SELECT * FROM offers WHERE id = ?", (offer_id,)).fetchone())
+
+
+def mark_offer_payroll_ready(connection: sqlite3.Connection, offer_id: str) -> dict[str, Any]:
+    offer_row = connection.execute("SELECT * FROM offers WHERE id = ?", (offer_id,)).fetchone()
+    if not offer_row:
+        raise LookupError(f"Offer not found: {offer_id}")
+
+    now = _now_iso()
+    payroll_handoff_status = "Ready"
+    next_action = get_offer_next_action(offer_row["status"], payroll_handoff_status)
+    payroll_handoff_summary = build_payroll_handoff_summary(
+        candidate_name=offer_row["candidate_name"],
+        opening_title=offer_row["opening_title"],
+        payroll_owner=offer_row["payroll_owner"],
+        payroll_handoff_status=payroll_handoff_status,
+        salary_expectation=offer_row["salary_expectation"],
+        opening_salary_range="",
+        compensation_notes=offer_row["compensation_notes"],
+    )
+    handoff_summary = build_offer_handoff_notes(
+        candidate_name=offer_row["candidate_name"],
+        opening_title=offer_row["opening_title"],
+        offer_status=offer_row["status"],
+        onboarding_owner=offer_row["onboarding_owner"],
+        payroll_handoff_status=payroll_handoff_status,
+        salary_expectation=offer_row["salary_expectation"],
+        compensation_notes=offer_row["compensation_notes"],
+    )
+
+    connection.execute(
+        """
+        UPDATE offers
+        SET payroll_handoff_status = ?,
+            next_action = ?,
+            handoff_summary = ?,
+            payroll_handoff_summary = ?,
+            updated_at = ?
+        WHERE id = ?
+        """,
+        (
+            payroll_handoff_status,
+            next_action,
+            handoff_summary,
+            payroll_handoff_summary,
+            now,
+            offer_id,
+        ),
+    )
+    connection.execute(
+        """
+        UPDATE candidates
+        SET next_action = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (next_action, now, offer_row["candidate_id"]),
+    )
+    _append_candidate_timeline_event(
+        connection,
+        candidate_id=offer_row["candidate_id"],
+        event_type="offer_payroll_ready",
+        title="薪酬交接已就绪",
+        detail=f"薪酬负责人：{offer_row['payroll_owner']}。下一步：{next_action}",
+        actor=offer_row["payroll_owner"],
+        created_at=now,
+    )
+    connection.commit()
+    updated_offer = _offer_from_row(connection.execute("SELECT * FROM offers WHERE id = ?", (offer_id,)).fetchone())
+    updated_candidate = _candidate_from_row(connection.execute("SELECT * FROM candidates WHERE id = ?", (offer_row["candidate_id"],)).fetchone())
+    return {
+        "offer": updated_offer,
+        "candidate": updated_candidate,
+        "timeline": list_candidate_timeline(connection, offer_row["candidate_id"]),
+    }
+
+
 def _job_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
@@ -710,6 +948,25 @@ def _interview_payload(record: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _offer_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "candidateId": row["candidate_id"],
+        "jobId": row["job_id"],
+        "candidateName": row["candidate_name"],
+        "openingTitle": row["opening_title"],
+        "status": row["status"],
+        "onboardingOwner": row["onboarding_owner"],
+        "payrollOwner": row["payroll_owner"],
+        "payrollHandoffStatus": row["payroll_handoff_status"],
+        "salaryExpectation": row["salary_expectation"],
+        "compensationNotes": row["compensation_notes"],
+        "handoffSummary": row["handoff_summary"],
+        "payrollHandoffSummary": row["payroll_handoff_summary"],
+        "nextAction": row["next_action"],
+    }
+
+
 def _timeline_event_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
@@ -751,6 +1008,19 @@ def _seed_candidate_timeline_events(connection: sqlite3.Connection, seed: Mappin
                 f"{item['time']} · {item['interviewer']} · {item['mode']}。",
                 item["interviewer"],
                 item["time"],
+            )
+        )
+
+    for index, item in enumerate(seed["offers"], start=1):
+        rows.append(
+            (
+                f"seed-offer-{index}",
+                item["candidateId"],
+                "offer_seeded",
+                "Offer 交接已创建",
+                f"状态：{item['status']}。下一步：{item['nextAction']}",
+                item["onboardingOwner"],
+                "Offer 在途",
             )
         )
 
@@ -850,6 +1120,13 @@ def _default_next_step(decision: str) -> str:
         "淘汰": "同步淘汰结论",
         "待补面": "补充信息后再决策",
     }.get(decision, "等待反馈同步")
+
+
+def _candidate_status_from_offer_status(status: str) -> str:
+    return {
+        "Accepted": "Offer 已接受",
+        "Rejected": "Offer 未接受",
+    }.get(status, "Offer 推进中")
 
 
 def _table_count(connection: sqlite3.Connection, table_name: str) -> int:

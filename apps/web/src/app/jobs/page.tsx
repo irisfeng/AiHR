@@ -1,13 +1,14 @@
 import { AgencyBriefWorkbench } from "@/components/agency-brief-workbench";
 import { AppShell, Panel, StatusPill, TagList } from "@/components/chrome";
 import { JobIntakeWorkbench } from "@/components/job-intake-workbench";
+import { OfferHandoffWorkbench } from "@/components/offer-handoff-workbench";
 import { deriveWorkspaceSlices, getRecruitmentWorkspaceData } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export default async function JobsPage() {
   const data = await getRecruitmentWorkspaceData();
-  const { urgentJobs } = deriveWorkspaceSlices(data);
+  const { urgentJobs, activeOffers } = deriveWorkspaceSlices(data);
   const primaryJob = urgentJobs[0];
 
   return (
@@ -102,6 +103,15 @@ export default async function JobsPage() {
             ) : (
               <p className="subtle-text">还没有可预演的岗位。先创建岗位或接通实时 API 后再生成 brief。</p>
             )}
+          </Panel>
+
+          <Panel title="Offer 交接工作台" caption="岗位页直接推进 Offer，不再切到另一套后台对象。">
+            <OfferHandoffWorkbench
+              candidates={data.candidates}
+              jobs={data.jobs}
+              offers={activeOffers}
+              disabled={data.source !== "live"}
+            />
           </Panel>
 
           <Panel title="快速录入岗位" caption="先把岗位写进持久层，漏斗和总览会自动跟着更新。">

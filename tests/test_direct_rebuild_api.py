@@ -24,15 +24,18 @@ class DirectRebuildApiTests(unittest.TestCase):
         candidates = self.client.get("/api/candidates")
         jobs = self.client.get("/api/jobs")
         interviews = self.client.get("/api/interviews")
+        offers = self.client.get("/api/offers")
         overview = self.client.get("/api/overview")
 
         self.assertEqual(candidates.status_code, 200)
         self.assertEqual(jobs.status_code, 200)
         self.assertEqual(interviews.status_code, 200)
+        self.assertEqual(offers.status_code, 200)
         self.assertEqual(overview.status_code, 200)
         self.assertEqual(len(candidates.json()), 5)
         self.assertEqual(len(jobs.json()), 4)
         self.assertEqual(len(interviews.json()), 4)
+        self.assertEqual(len(offers.json()), 2)
         self.assertEqual(overview.json()["title"], "AIHR Recruiting OS")
 
     def test_create_candidate_persists_to_subsequent_reads(self):
@@ -152,6 +155,75 @@ class DirectRebuildApiTests(unittest.TestCase):
         self.assertEqual(timeline.json()[0]["title"], "业务面反馈：通过")
         self.assertIn("模型服务工程化比较扎实", timeline.json()[0]["detail"])
         self.assertEqual(timeline.json()[0]["actor"], "沈珂")
+
+    def test_create_offer_handoff_updates_job_candidate_and_timeline(self):
+        created = self.client.post(
+            "/api/offers",
+            json={
+                "candidate_id": "cand-001",
+                "job_id": "job-backend-01",
+                "status": "Accepted",
+                "salary_expectation": "45k x 15",
+                "compensation_notes": "确认试用期 3 个月，补贴口径与签字链路。",
+                "onboarding_owner": "周岩",
+                "payroll_owner": "林薇",
+            },
+        )
+
+        self.assertEqual(created.status_code, 201)
+        payload = created.json()
+        self.assertEqual(payload["candidateName"], "王书衡")
+        self.assertEqual(payload["payrollHandoffStatus"], "Not Started")
+        self.assertEqual(payload["nextAction"], "补齐入职资料并准备薪酬交接")
+        self.assertIn("AIHR Offer 交接摘要", payload["handoffSummary"])
+
+        offers = self.client.get("/api/offers").json()
+        created_offer = next(item for item in offers if item["id"] == payload["id"])
+        self.assertEqual(created_offer["payrollOwner"], "林薇")
+
+        jobs = self.client.get("/api/jobs").json()
+        backend_job = next(item for item in jobs if item["id"] == "job-backend-01")
+        self.assertEqual(backend_job["offers"], 2)
+
+        candidates = self.client.get("/api/candidates").json()
+        candidate = next(item for item in candidates if item["id"] == "cand-001")
+        self.assertEqual(candidate["status"], "Offer 已接受")
+        self.assertEqual(candidate["nextAction"], "补齐入职资料并准备薪酬交接")
+
+        timeline = self.client.get("/api/candidates/cand-001/timeline").json()
+        self.assertEqual(timeline[0]["title"], "Offer 交接已创建")
+        self.assertIn("45k x 15", timeline[0]["detail"])
+
+    def test_mark_offer_payroll_ready_updates_offer_and_candidate_next_action(self):
+        created = self.client.post(
+            "/api/offers",
+            json={
+                "candidate_id": "cand-003",
+                "job_id": "job-recruiting-01",
+                "status": "Accepted",
+                "salary_expectation": "28k x 14",
+                "compensation_notes": "确认到岗日期和首月发薪规则。",
+                "onboarding_owner": "刘颖",
+                "payroll_owner": "陈琳",
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        offer_id = created.json()["id"]
+
+        updated = self.client.post(f"/api/offers/{offer_id}/payroll-ready")
+        self.assertEqual(updated.status_code, 200)
+        payload = updated.json()
+        self.assertEqual(payload["offer"]["payrollHandoffStatus"], "Ready")
+        self.assertEqual(payload["offer"]["nextAction"], "发起入职任务并通知薪资建档负责人")
+        self.assertIn("AIHR 薪酬交接摘要", payload["offer"]["payrollHandoffSummary"])
+
+        candidates = self.client.get("/api/candidates").json()
+        candidate = next(item for item in candidates if item["id"] == "cand-003")
+        self.assertEqual(candidate["nextAction"], "发起入职任务并通知薪资建档负责人")
+
+        timeline = self.client.get("/api/candidates/cand-003/timeline").json()
+        self.assertEqual(timeline[0]["title"], "薪酬交接已就绪")
+        self.assertEqual(timeline[0]["actor"], "陈琳")
 
 
 if __name__ == "__main__":

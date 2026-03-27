@@ -93,11 +93,29 @@ export interface InterviewRecord {
   summary: string;
 }
 
+export interface OfferRecord {
+  id: string;
+  candidateId: string;
+  jobId: string;
+  candidateName: string;
+  openingTitle: string;
+  status: string;
+  onboardingOwner: string;
+  payrollOwner: string;
+  payrollHandoffStatus: string;
+  salaryExpectation: string;
+  compensationNotes: string;
+  handoffSummary: string;
+  payrollHandoffSummary: string;
+  nextAction: string;
+}
+
 export interface AppData {
   overview: OverviewData;
   jobs: JobRecord[];
   candidates: CandidateRecord[];
   interviews: InterviewRecord[];
+  offers: OfferRecord[];
 }
 
 export const fallbackRecruitmentData = appData as AppData;
@@ -114,6 +132,10 @@ export function sortUrgentJobs(items: JobRecord[]): JobRecord[] {
 
 export function selectPendingFeedback(items: InterviewRecord[]): InterviewRecord[] {
   return items.filter((item) => item.status === "待反馈");
+}
+
+export function selectActiveOffers(items: OfferRecord[]): OfferRecord[] {
+  return items.filter((item) => item.status !== "Rejected");
 }
 
 export function buildFallbackCandidateTimeline(
@@ -155,3 +177,4 @@ export function buildFallbackCandidateTimeline(
 export const topCandidates = sortTopCandidates(recruitmentData.candidates);
 export const urgentJobs = sortUrgentJobs(recruitmentData.jobs);
 export const pendingFeedback = selectPendingFeedback(recruitmentData.interviews);
+export const activeOffers = selectActiveOffers(recruitmentData.offers);

@@ -1,6 +1,7 @@
 import {
   buildFallbackCandidateTimeline,
   fallbackRecruitmentData,
+  selectActiveOffers,
   selectPendingFeedback,
   sortTopCandidates,
   sortUrgentJobs,
@@ -8,6 +9,7 @@ import {
   type CandidateTimelineEvent,
   type InterviewRecord,
   type JobRecord,
+  type OfferRecord,
   type OverviewData,
 } from "@/lib/site-data";
 
@@ -18,6 +20,7 @@ export interface RecruitmentWorkspaceData {
   jobs: JobRecord[];
   candidates: CandidateRecord[];
   interviews: InterviewRecord[];
+  offers: OfferRecord[];
   source: DataSource;
 }
 
@@ -64,6 +67,16 @@ export interface AgencyBriefResponse {
   brief: string;
 }
 
+export interface OfferCreateRequest {
+  candidate_id: string;
+  job_id: string;
+  status: string;
+  salary_expectation: string;
+  compensation_notes: string;
+  onboarding_owner: string;
+  payroll_owner: string;
+}
+
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
 
 export const serverApiBaseUrl =
@@ -87,11 +100,12 @@ async function fetchJson<T>(path: string): Promise<T> {
 
 export async function getRecruitmentWorkspaceData(): Promise<RecruitmentWorkspaceData> {
   try {
-    const [overview, jobs, candidates, interviews] = await Promise.all([
+    const [overview, jobs, candidates, interviews, offers] = await Promise.all([
       fetchJson<OverviewData>("/api/overview"),
       fetchJson<JobRecord[]>("/api/jobs"),
       fetchJson<CandidateRecord[]>("/api/candidates"),
       fetchJson<InterviewRecord[]>("/api/interviews"),
+      fetchJson<OfferRecord[]>("/api/offers"),
     ]);
 
     return {
@@ -99,6 +113,7 @@ export async function getRecruitmentWorkspaceData(): Promise<RecruitmentWorkspac
       jobs,
       candidates,
       interviews,
+      offers,
       source: "live",
     };
   } catch {
@@ -127,5 +142,6 @@ export function deriveWorkspaceSlices(data: RecruitmentWorkspaceData) {
     urgentJobs: sortUrgentJobs(data.jobs),
     topCandidates: sortTopCandidates(data.candidates),
     pendingFeedback: selectPendingFeedback(data.interviews),
+    activeOffers: selectActiveOffers(data.offers),
   };
 }
