@@ -11,7 +11,7 @@ from typing import Any
 
 DEMO_DATA_FILE = Path(__file__).resolve().parents[2] / "shared" / "demo-data.json"
 DEFAULT_DATABASE_PATH = Path(__file__).resolve().parents[1] / "data" / "aihr.sqlite3"
-DATABASE_PATH = Path(os.getenv("AIHR_API_DATABASE_PATH") or DEFAULT_DATABASE_PATH)
+DATABASE_PATH_OVERRIDE: Path | None = None
 
 
 def load_demo_seed() -> dict[str, Any]:
@@ -19,12 +19,20 @@ def load_demo_seed() -> dict[str, Any]:
 
 
 def get_database_path() -> Path:
-    return DATABASE_PATH
+    if DATABASE_PATH_OVERRIDE is not None:
+        return DATABASE_PATH_OVERRIDE
+    return Path(os.getenv("AIHR_API_DATABASE_PATH") or DEFAULT_DATABASE_PATH)
+
+
+def set_database_path(path: str | Path | None) -> None:
+    global DATABASE_PATH_OVERRIDE
+    DATABASE_PATH_OVERRIDE = Path(path) if path else None
 
 
 def connect_db() -> sqlite3.Connection:
-    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
+    database_path = get_database_path()
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(database_path, check_same_thread=False)
     connection.row_factory = sqlite3.Row
     return connection
 
@@ -388,6 +396,65 @@ def create_job(connection: sqlite3.Connection, payload: Mapping[str, Any]) -> di
     }
 
 
+def create_interview(connection: sqlite3.Connection, payload: Mapping[str, Any]) -> dict[str, Any]:
+    interview_id = payload.get("id") or f"int-{datetime.now().strftime('%Y%m%d%H%M%S%f')[-12:]}"
+    now = _now_iso()
+    record = {
+        "id": interview_id,
+        "candidate_name": str(payload["candidate_name"]).strip(),
+        "role": str(payload["role"]).strip(),
+        "round": str(payload.get("round") or "技术一面").strip(),
+        "mode": str(payload.get("mode") or "视频").strip(),
+        "time_label": str(payload.get("time_label") or _updated_label()).strip(),
+        "interviewer": str(payload.get("interviewer") or "待分配").strip(),
+        "status": str(payload.get("status") or "已安排").strip(),
+        "decision_window": str(payload.get("decision_window") or "面试后 24 小时").strip(),
+        "pack_status": str(payload.get("pack_status") or "待补充").strip(),
+        "summary": str(payload.get("summary") or "待补面试目标与问题清单。").strip(),
+    }
+
+    connection.execute(
+        """
+        INSERT INTO interviews (
+            id, candidate_name, role, round, mode, time_label, interviewer,
+            status, decision_window, pack_status, summary, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            record["id"],
+            record["candidate_name"],
+            record["role"],
+            record["round"],
+            record["mode"],
+            record["time_label"],
+            record["interviewer"],
+            record["status"],
+            record["decision_window"],
+            record["pack_status"],
+            record["summary"],
+            now,
+            now,
+        ),
+    )
+
+    connection.execute(
+        """
+        UPDATE jobs
+        SET interviews = interviews + 1,
+            updated_at = ?,
+            updated_at_label = ?
+        WHERE title = ?
+        """,
+        (
+            now,
+            _updated_label(),
+            record["role"],
+        ),
+    )
+    connection.commit()
+    return _interview_payload(record)
+
+
 def _job_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
@@ -428,18 +495,36 @@ def _candidate_from_row(row: sqlite3.Row) -> dict[str, Any]:
 
 
 def _interview_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    return _interview_payload(
+        {
+            "id": row["id"],
+            "candidate_name": row["candidate_name"],
+            "role": row["role"],
+            "round": row["round"],
+            "mode": row["mode"],
+            "time_label": row["time_label"],
+            "interviewer": row["interviewer"],
+            "status": row["status"],
+            "decision_window": row["decision_window"],
+            "pack_status": row["pack_status"],
+            "summary": row["summary"],
+        }
+    )
+
+
+def _interview_payload(record: Mapping[str, Any]) -> dict[str, Any]:
     return {
-        "id": row["id"],
-        "candidateName": row["candidate_name"],
-        "role": row["role"],
-        "round": row["round"],
-        "mode": row["mode"],
-        "time": row["time_label"],
-        "interviewer": row["interviewer"],
-        "status": row["status"],
-        "decisionWindow": row["decision_window"],
-        "packStatus": row["pack_status"],
-        "summary": row["summary"],
+        "id": record["id"],
+        "candidateName": record["candidate_name"],
+        "role": record["role"],
+        "round": record["round"],
+        "mode": record["mode"],
+        "time": record["time_label"],
+        "interviewer": record["interviewer"],
+        "status": record["status"],
+        "decisionWindow": record["decision_window"],
+        "packStatus": record["pack_status"],
+        "summary": record["summary"],
     }
 
 

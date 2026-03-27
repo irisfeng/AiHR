@@ -1,4 +1,5 @@
 import { AppShell, Panel, StatusPill } from "@/components/chrome";
+import { InterviewIntakeWorkbench } from "@/components/interview-intake-workbench";
 import { deriveWorkspaceSlices, getRecruitmentWorkspaceData } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +76,10 @@ export default async function InterviewsPage() {
                 <span>通过、淘汰、待补充信息，必须在当日闭环，不再拖尾。</span>
               </article>
             </div>
+          </Panel>
+
+          <Panel title="快速安排面试" caption="直接把候选人、轮次和面试官写进持久层。">
+            <InterviewIntakeWorkbench disabled={data.source !== "live"} />
           </Panel>
         </div>
       </section>

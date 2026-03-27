@@ -19,6 +19,7 @@ from aihr.services.screening import screen_candidate
 from .store import (
     bootstrap_database,
     create_candidate,
+    create_interview,
     create_job,
     get_app_state,
     get_database_path,
@@ -103,6 +104,19 @@ class JobCreateRequest(BaseModel):
     urgency: str = "medium"
     summary: str = ""
     skills: list[str] = Field(default_factory=list)
+
+
+class InterviewCreateRequest(BaseModel):
+    candidate_name: str
+    role: str
+    round: str = "技术一面"
+    mode: str = "视频"
+    time_label: str = ""
+    interviewer: str = ""
+    status: str = "已安排"
+    decision_window: str = "面试后 24 小时"
+    pack_status: str = "待补充"
+    summary: str = ""
 
 
 @app.get("/healthz")
@@ -203,6 +217,11 @@ def post_candidate(payload: CandidateCreateRequest, connection: sqlite3.Connecti
 @app.get("/api/interviews")
 def get_interviews(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
     return list_interviews(connection)
+
+
+@app.post("/api/interviews", status_code=status.HTTP_201_CREATED)
+def post_interview(payload: InterviewCreateRequest, connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
+    return create_interview(connection, payload.model_dump())
 
 
 @app.post("/api/screening/preview")
