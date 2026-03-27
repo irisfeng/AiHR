@@ -1,4 +1,5 @@
 import { AppShell, Panel, StatusPill } from "@/components/chrome";
+import { InterviewFeedbackWorkbench } from "@/components/interview-feedback-workbench";
 import { InterviewIntakeWorkbench } from "@/components/interview-intake-workbench";
 import { deriveWorkspaceSlices, getRecruitmentWorkspaceData } from "@/lib/api";
 
@@ -59,6 +60,10 @@ export default async function InterviewsPage() {
                 </article>
               ))}
             </div>
+          </Panel>
+
+          <Panel title="快速回填反馈" caption="提交一次反馈，同时更新面试状态、候选人下一步和时间线。">
+            <InterviewFeedbackWorkbench interviews={data.interviews} disabled={data.source !== "live"} />
           </Panel>
 
           <Panel title="这页只做三件事" caption="没有必要再让用户在多个 DocType 之间来回切。">

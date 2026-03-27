@@ -57,6 +57,30 @@ class DirectRebuildApiTests(unittest.TestCase):
         candidates = self.client.get("/api/candidates").json()
         self.assertTrue(any(item["name"] == "夜班候选人" for item in candidates))
 
+    def test_create_candidate_exposes_initial_timeline_event(self):
+        created = self.client.post(
+            "/api/candidates",
+            json={
+                "name": "林起",
+                "role": "资深后端工程师",
+                "city": "上海",
+                "experience": "5 年",
+                "owner": "周岩",
+                "source": "内推",
+                "score": 82,
+                "skills": ["Python", "PostgreSQL"],
+            },
+        )
+
+        self.assertEqual(created.status_code, 201)
+        candidate_id = created.json()["id"]
+
+        timeline = self.client.get(f"/api/candidates/{candidate_id}/timeline")
+        self.assertEqual(timeline.status_code, 200)
+        self.assertEqual(len(timeline.json()), 1)
+        self.assertEqual(timeline.json()[0]["title"], "候选人已录入")
+        self.assertIn("内推", timeline.json()[0]["detail"])
+
     def test_create_job_and_interview_updates_job_interview_count(self):
         created_job = self.client.post(
             "/api/jobs",
@@ -92,6 +116,42 @@ class DirectRebuildApiTests(unittest.TestCase):
         jobs = self.client.get("/api/jobs").json()
         sre_job = next(item for item in jobs if item["title"] == "平台 SRE 负责人")
         self.assertEqual(sre_job["interviews"], 1)
+
+    def test_submit_interview_feedback_updates_candidate_and_timeline(self):
+        applied = self.client.post(
+            "/api/interviews/int-002/feedback",
+            json={
+                "decision": "通过",
+                "summary": "模型服务工程化比较扎实，建议进入终面。",
+                "strengths": ["能讲清 GPU 成本优化", "熟悉推理服务上线流程"],
+                "concerns": ["多模型编排案例还需要补问"],
+                "next_step": "安排终面",
+                "actor": "沈珂",
+            },
+        )
+
+        self.assertEqual(applied.status_code, 200)
+        payload = applied.json()
+        self.assertEqual(payload["interview"]["status"], "已通过")
+        self.assertEqual(payload["candidate"]["status"], "建议推进")
+        self.assertEqual(payload["candidate"]["nextAction"], "安排终面")
+
+        interviews = self.client.get("/api/interviews").json()
+        updated_interview = next(item for item in interviews if item["id"] == "int-002")
+        self.assertEqual(updated_interview["status"], "已通过")
+        self.assertIn("模型服务工程化比较扎实", updated_interview["summary"])
+
+        candidates = self.client.get("/api/candidates").json()
+        updated_candidate = next(item for item in candidates if item["id"] == "cand-002")
+        self.assertEqual(updated_candidate["status"], "建议推进")
+        self.assertEqual(updated_candidate["nextAction"], "安排终面")
+
+        timeline = self.client.get("/api/candidates/cand-002/timeline")
+        self.assertEqual(timeline.status_code, 200)
+        self.assertGreaterEqual(len(timeline.json()), 1)
+        self.assertEqual(timeline.json()[0]["title"], "业务面反馈：通过")
+        self.assertIn("模型服务工程化比较扎实", timeline.json()[0]["detail"])
+        self.assertEqual(timeline.json()[0]["actor"], "沈珂")
 
 
 if __name__ == "__main__":

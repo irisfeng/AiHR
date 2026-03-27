@@ -114,6 +114,30 @@ def bootstrap_database() -> None:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS interview_feedbacks (
+                id TEXT PRIMARY KEY,
+                interview_id TEXT NOT NULL UNIQUE,
+                decision TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                strengths_json TEXT NOT NULL,
+                concerns_json TEXT NOT NULL,
+                next_step TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_timeline_events (
+                id TEXT PRIMARY KEY,
+                candidate_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                title TEXT NOT NULL,
+                detail TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                happened_at_label TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
             """
         )
         seed_if_empty(connection)
@@ -227,6 +251,9 @@ def seed_if_empty(connection: sqlite3.Connection) -> None:
             ],
         )
 
+    if _table_count(connection, "candidate_timeline_events") == 0:
+        _seed_candidate_timeline_events(connection, seed)
+
 
 def list_jobs(connection: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = connection.execute(
@@ -258,6 +285,18 @@ def list_interviews(connection: sqlite3.Connection) -> list[dict[str, Any]]:
         """
     ).fetchall()
     return [_interview_from_row(row) for row in rows]
+
+
+def list_candidate_timeline(connection: sqlite3.Connection, candidate_id: str) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """
+        SELECT * FROM candidate_timeline_events
+        WHERE candidate_id = ?
+        ORDER BY rowid DESC, created_at DESC
+        """,
+        (candidate_id,),
+    ).fetchall()
+    return [_timeline_event_from_row(row) for row in rows]
 
 
 def get_app_state(connection: sqlite3.Connection, key: str, fallback: Any) -> Any:
@@ -319,6 +358,15 @@ def create_candidate(connection: sqlite3.Connection, payload: Mapping[str, Any])
             now,
             now,
         ),
+    )
+    _append_candidate_timeline_event(
+        connection,
+        candidate_id=record["id"],
+        event_type="candidate_created",
+        title="候选人已录入",
+        detail=f"来自{record['source']}，目标岗位：{record['role']}，当前状态：{record['status']}。",
+        actor=record["owner"],
+        created_at=now,
     )
     connection.commit()
     return record
@@ -451,8 +499,142 @@ def create_interview(connection: sqlite3.Connection, payload: Mapping[str, Any])
             record["role"],
         ),
     )
+    candidate_row = _find_candidate_row_by_name_role(connection, record["candidate_name"], record["role"])
+    if candidate_row:
+        next_action = f"等待{record['round']}反馈"
+        connection.execute(
+            """
+            UPDATE candidates
+            SET status = ?, next_action = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            ("面试中", next_action, now, candidate_row["id"]),
+        )
+        _append_candidate_timeline_event(
+            connection,
+            candidate_id=candidate_row["id"],
+            event_type="interview_scheduled",
+            title=f"已安排{record['round']}",
+            detail=f"{record['time_label']} · {record['interviewer']} · {record['mode']}。",
+            actor=record["interviewer"],
+            created_at=now,
+        )
     connection.commit()
     return _interview_payload(record)
+
+
+def apply_interview_feedback(connection: sqlite3.Connection, interview_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+    interview_row = connection.execute("SELECT * FROM interviews WHERE id = ?", (interview_id,)).fetchone()
+    if not interview_row:
+        raise LookupError(f"Interview not found: {interview_id}")
+
+    now = _now_iso()
+    decision = str(payload.get("decision") or "待补面").strip()
+    summary = str(payload.get("summary") or "待补反馈摘要。").strip()
+    strengths = [str(item).strip() for item in payload.get("strengths", []) if str(item).strip()]
+    concerns = [str(item).strip() for item in payload.get("concerns", []) if str(item).strip()]
+    next_step = str(payload.get("next_step") or _default_next_step(decision)).strip()
+    actor = str(payload.get("actor") or interview_row["interviewer"] or "面试官").strip()
+    interview_status = _interview_status_from_decision(decision)
+
+    existing_feedback = connection.execute(
+        "SELECT id FROM interview_feedbacks WHERE interview_id = ?",
+        (interview_id,),
+    ).fetchone()
+    feedback_id = existing_feedback["id"] if existing_feedback else f"fb-{datetime.now().strftime('%Y%m%d%H%M%S%f')[-12:]}"
+
+    if existing_feedback:
+        connection.execute(
+            """
+            UPDATE interview_feedbacks
+            SET decision = ?, summary = ?, strengths_json = ?, concerns_json = ?, next_step = ?, actor = ?, updated_at = ?
+            WHERE interview_id = ?
+            """,
+            (
+                decision,
+                summary,
+                _json_dump(strengths),
+                _json_dump(concerns),
+                next_step,
+                actor,
+                now,
+                interview_id,
+            ),
+        )
+    else:
+        connection.execute(
+            """
+            INSERT INTO interview_feedbacks (
+                id, interview_id, decision, summary, strengths_json, concerns_json,
+                next_step, actor, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                feedback_id,
+                interview_id,
+                decision,
+                summary,
+                _json_dump(strengths),
+                _json_dump(concerns),
+                next_step,
+                actor,
+                now,
+                now,
+            ),
+        )
+
+    connection.execute(
+        """
+        UPDATE interviews
+        SET status = ?, summary = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (interview_status, summary, now, interview_id),
+    )
+
+    candidate_row = _find_candidate_row_by_name_role(connection, interview_row["candidate_name"], interview_row["role"])
+    candidate_payload = None
+    timeline_payload: list[dict[str, Any]] = []
+    if candidate_row:
+        candidate_status = _candidate_status_from_decision(decision)
+        connection.execute(
+            """
+            UPDATE candidates
+            SET status = ?, next_action = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (candidate_status, next_step, now, candidate_row["id"]),
+        )
+        _append_candidate_timeline_event(
+            connection,
+            candidate_id=candidate_row["id"],
+            event_type="interview_feedback",
+            title=f"{interview_row['round']}反馈：{decision}",
+            detail=_build_feedback_timeline_detail(summary, strengths, concerns, next_step),
+            actor=actor,
+            created_at=now,
+        )
+        candidate_payload = _candidate_from_row(
+            connection.execute("SELECT * FROM candidates WHERE id = ?", (candidate_row["id"],)).fetchone()
+        )
+        timeline_payload = list_candidate_timeline(connection, candidate_row["id"])
+
+    connection.commit()
+    updated_interview = _interview_from_row(connection.execute("SELECT * FROM interviews WHERE id = ?", (interview_id,)).fetchone())
+    return {
+        "feedback": {
+            "id": feedback_id,
+            "decision": decision,
+            "summary": summary,
+            "strengths": strengths,
+            "concerns": concerns,
+            "nextStep": next_step,
+            "actor": actor,
+        },
+        "interview": updated_interview,
+        "candidate": candidate_payload,
+        "timeline": timeline_payload,
+    }
 
 
 def _job_from_row(row: sqlite3.Row) -> dict[str, Any]:
@@ -526,6 +708,148 @@ def _interview_payload(record: Mapping[str, Any]) -> dict[str, Any]:
         "packStatus": record["pack_status"],
         "summary": record["summary"],
     }
+
+
+def _timeline_event_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "eventType": row["event_type"],
+        "title": row["title"],
+        "detail": row["detail"],
+        "actor": row["actor"],
+        "happenedAt": row["happened_at_label"],
+    }
+
+
+def _seed_candidate_timeline_events(connection: sqlite3.Connection, seed: Mapping[str, Any]) -> None:
+    candidate_map = {(item["name"], item["role"]): item["id"] for item in seed["candidates"]}
+    rows: list[tuple[str, str, str, str, str, str, str]] = []
+
+    for index, item in enumerate(seed["candidates"], start=1):
+        rows.append(
+            (
+                f"seed-candidate-{index}",
+                item["id"],
+                "candidate_seeded",
+                "候选人已入池",
+                f"来自{item['source']}，当前状态：{item['status']}，下一步：{item['nextAction']}。",
+                item["owner"],
+                "初始导入",
+            )
+        )
+
+    for index, item in enumerate(seed["interviews"], start=1):
+        candidate_id = candidate_map.get((item["candidateName"], item["role"]))
+        if not candidate_id:
+            continue
+        rows.append(
+            (
+                f"seed-interview-{index}",
+                candidate_id,
+                "interview_seeded",
+                f"已安排{item['round']}",
+                f"{item['time']} · {item['interviewer']} · {item['mode']}。",
+                item["interviewer"],
+                item["time"],
+            )
+        )
+
+    connection.executemany(
+        """
+        INSERT INTO candidate_timeline_events (
+            id, candidate_id, event_type, title, detail, actor, happened_at_label, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                event_id,
+                candidate_id,
+                event_type,
+                title,
+                detail,
+                actor,
+                happened_at_label,
+                _now_iso(),
+            )
+            for event_id, candidate_id, event_type, title, detail, actor, happened_at_label in rows
+        ],
+    )
+
+
+def _append_candidate_timeline_event(
+    connection: sqlite3.Connection,
+    *,
+    candidate_id: str,
+    event_type: str,
+    title: str,
+    detail: str,
+    actor: str,
+    created_at: str | None = None,
+) -> None:
+    timestamp = created_at or _now_iso()
+    connection.execute(
+        """
+        INSERT INTO candidate_timeline_events (
+            id, candidate_id, event_type, title, detail, actor, happened_at_label, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            f"evt-{datetime.now().strftime('%Y%m%d%H%M%S%f')[-12:]}",
+            candidate_id,
+            event_type,
+            title,
+            detail,
+            actor or "系统",
+            _updated_label(),
+            timestamp,
+        ),
+    )
+
+
+def _find_candidate_row_by_name_role(connection: sqlite3.Connection, name: str, role: str) -> sqlite3.Row | None:
+    return connection.execute(
+        """
+        SELECT * FROM candidates
+        WHERE name = ? AND role = ?
+        ORDER BY updated_at DESC
+        LIMIT 1
+        """,
+        (name, role),
+    ).fetchone()
+
+
+def _build_feedback_timeline_detail(summary: str, strengths: list[str], concerns: list[str], next_step: str) -> str:
+    parts = [summary]
+    if strengths:
+        parts.append(f"亮点：{'；'.join(strengths[:2])}")
+    if concerns:
+        parts.append(f"风险：{'；'.join(concerns[:2])}")
+    parts.append(f"下一步：{next_step}")
+    return " ".join(part for part in parts if part)
+
+
+def _interview_status_from_decision(decision: str) -> str:
+    return {
+        "通过": "已通过",
+        "淘汰": "已淘汰",
+        "待补面": "待补面",
+    }.get(decision, "待反馈")
+
+
+def _candidate_status_from_decision(decision: str) -> str:
+    return {
+        "通过": "建议推进",
+        "淘汰": "暂不推进",
+        "待补面": "待补充信息",
+    }.get(decision, "待经理复核")
+
+
+def _default_next_step(decision: str) -> str:
+    return {
+        "通过": "安排下一轮面试",
+        "淘汰": "同步淘汰结论",
+        "待补面": "补充信息后再决策",
+    }.get(decision, "等待反馈同步")
 
 
 def _table_count(connection: sqlite3.Connection, table_name: str) -> int:

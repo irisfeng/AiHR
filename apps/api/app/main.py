@@ -5,7 +5,7 @@ import sqlite3
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, status
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -17,6 +17,7 @@ from aihr.services.recruitment_ops import (
 from aihr.services.screening import screen_candidate
 
 from .store import (
+    apply_interview_feedback,
     bootstrap_database,
     create_candidate,
     create_interview,
@@ -24,6 +25,7 @@ from .store import (
     get_app_state,
     get_database_path,
     get_db,
+    list_candidate_timeline,
     list_candidates,
     list_interviews,
     list_jobs,
@@ -119,6 +121,15 @@ class InterviewCreateRequest(BaseModel):
     summary: str = ""
 
 
+class InterviewFeedbackRequest(BaseModel):
+    decision: str
+    summary: str
+    strengths: list[str] = Field(default_factory=list)
+    concerns: list[str] = Field(default_factory=list)
+    next_step: str = ""
+    actor: str = ""
+
+
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok", "database": str(get_database_path())}
@@ -209,6 +220,11 @@ def get_candidates(connection: sqlite3.Connection = Depends(get_db)) -> list[dic
     return list_candidates(connection)
 
 
+@app.get("/api/candidates/{candidate_id}/timeline")
+def get_candidate_timeline(candidate_id: str, connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
+    return list_candidate_timeline(connection, candidate_id)
+
+
 @app.post("/api/candidates", status_code=status.HTTP_201_CREATED)
 def post_candidate(payload: CandidateCreateRequest, connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
     return create_candidate(connection, payload.model_dump())
@@ -222,6 +238,18 @@ def get_interviews(connection: sqlite3.Connection = Depends(get_db)) -> list[dic
 @app.post("/api/interviews", status_code=status.HTTP_201_CREATED)
 def post_interview(payload: InterviewCreateRequest, connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
     return create_interview(connection, payload.model_dump())
+
+
+@app.post("/api/interviews/{interview_id}/feedback")
+def post_interview_feedback(
+    interview_id: str,
+    payload: InterviewFeedbackRequest,
+    connection: sqlite3.Connection = Depends(get_db),
+) -> dict[str, Any]:
+    try:
+        return apply_interview_feedback(connection, interview_id, payload.model_dump())
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @app.post("/api/screening/preview")

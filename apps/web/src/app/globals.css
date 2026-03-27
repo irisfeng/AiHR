@@ -410,7 +410,9 @@ button {
 .list-card__body,
 .compact-card__note,
 .note-card p,
-.mini-stat span {
+.mini-stat span,
+.timeline-item p,
+.timeline-item small {
   margin: 12px 0 0;
 }
 
@@ -574,6 +576,31 @@ button {
   background: rgba(255, 251, 246, 0.98);
 }
 
+.timeline-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timeline-item {
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(114, 82, 58, 0.12);
+  background: rgba(255, 251, 246, 0.98);
+}
+
+.timeline-item__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timeline-item__top span,
+.timeline-item small {
+  color: var(--text-muted);
+}
+
 .result-summary,
 .result-pre {
   margin: 14px 0 0;
@@ -661,7 +688,8 @@ button {
   .candidate-card__footer,
   .list-card__headline,
   .candidate-card__header,
-  .compact-card__top {
+  .compact-card__top,
+  .timeline-item__top {
     flex-direction: column;
     align-items: flex-start;
   }

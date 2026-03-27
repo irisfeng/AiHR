@@ -70,6 +70,15 @@ export interface CandidateRecord {
   risks: string[];
 }
 
+export interface CandidateTimelineEvent {
+  id: string;
+  eventType: string;
+  title: string;
+  detail: string;
+  actor: string;
+  happenedAt: string;
+}
+
 export interface InterviewRecord {
   id: string;
   candidateName: string;
@@ -105,6 +114,42 @@ export function sortUrgentJobs(items: JobRecord[]): JobRecord[] {
 
 export function selectPendingFeedback(items: InterviewRecord[]): InterviewRecord[] {
   return items.filter((item) => item.status === "待反馈");
+}
+
+export function buildFallbackCandidateTimeline(
+  candidate: CandidateRecord,
+  interviews: InterviewRecord[],
+): CandidateTimelineEvent[] {
+  const matchedInterviews = interviews.filter(
+    (item) => item.candidateName === candidate.name && item.role === candidate.role,
+  );
+
+  return [
+    {
+      id: `${candidate.id}-status`,
+      eventType: "candidate_status",
+      title: "当前状态",
+      detail: `${candidate.status} · ${candidate.nextAction}`,
+      actor: candidate.owner,
+      happenedAt: "当前",
+    },
+    {
+      id: `${candidate.id}-intake`,
+      eventType: "candidate_seeded",
+      title: "候选人已入池",
+      detail: `来自${candidate.source}，当前匹配分 ${candidate.score}。`,
+      actor: candidate.owner,
+      happenedAt: "初始数据",
+    },
+    ...matchedInterviews.map((item) => ({
+      id: `${candidate.id}-${item.id}`,
+      eventType: "interview",
+      title: `${item.round}：${item.status}`,
+      detail: `${item.time} · ${item.interviewer} · ${item.summary}`,
+      actor: item.interviewer,
+      happenedAt: item.time,
+    })),
+  ];
 }
 
 export const topCandidates = sortTopCandidates(recruitmentData.candidates);

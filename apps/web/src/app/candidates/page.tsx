@@ -1,7 +1,7 @@
 import { CandidateIntakeWorkbench } from "@/components/candidate-intake-workbench";
 import { ScreeningPreviewWorkbench } from "@/components/screening-preview-workbench";
 import { AppShell, Panel, StatusPill, TagList } from "@/components/chrome";
-import { deriveWorkspaceSlices, getRecruitmentWorkspaceData } from "@/lib/api";
+import { deriveWorkspaceSlices, getCandidateTimeline, getRecruitmentWorkspaceData } from "@/lib/api";
 
 function scoreTone(score: number): "positive" | "accent" | "warning" {
   if (score >= 85) {
@@ -19,6 +19,7 @@ export default async function CandidatesPage() {
   const data = await getRecruitmentWorkspaceData();
   const { topCandidates } = deriveWorkspaceSlices(data);
   const primaryCandidate = topCandidates[0];
+  const primaryTimeline = primaryCandidate ? await getCandidateTimeline(primaryCandidate, data.interviews) : [];
 
   return (
     <AppShell
@@ -89,6 +90,28 @@ export default async function CandidatesPage() {
               <ScreeningPreviewWorkbench candidate={primaryCandidate} disabled={data.source !== "live"} />
             ) : (
               <p className="subtle-text">还没有可预演的候选人。先导入简历或接通实时 API 后再运行初筛预演。</p>
+            )}
+          </Panel>
+
+          <Panel
+            title={primaryCandidate ? `${primaryCandidate.name} 时间线` : "候选人时间线"}
+            caption="把录入、面试安排和反馈放在一条线里，减少跨页面追状态。"
+          >
+            {primaryTimeline.length ? (
+              <div className="timeline-feed">
+                {primaryTimeline.map((event) => (
+                  <article className="timeline-item" key={event.id}>
+                    <div className="timeline-item__top">
+                      <strong>{event.title}</strong>
+                      <span>{event.happenedAt}</span>
+                    </div>
+                    <p>{event.detail}</p>
+                    <small>执行人：{event.actor}</small>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="subtle-text">当前候选人还没有时间线记录。</p>
             )}
           </Panel>
 

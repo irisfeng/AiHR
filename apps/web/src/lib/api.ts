@@ -1,9 +1,11 @@
 import {
+  buildFallbackCandidateTimeline,
   fallbackRecruitmentData,
   selectPendingFeedback,
   sortTopCandidates,
   sortUrgentJobs,
   type CandidateRecord,
+  type CandidateTimelineEvent,
   type InterviewRecord,
   type JobRecord,
   type OverviewData,
@@ -104,6 +106,19 @@ export async function getRecruitmentWorkspaceData(): Promise<RecruitmentWorkspac
       ...fallbackRecruitmentData,
       source: "fallback",
     };
+  }
+}
+
+export async function getCandidateTimeline(
+  candidate: CandidateRecord,
+  interviews: InterviewRecord[],
+): Promise<CandidateTimelineEvent[]> {
+  const fallbackTimeline = buildFallbackCandidateTimeline(candidate, interviews);
+
+  try {
+    return await fetchJson<CandidateTimelineEvent[]>(`/api/candidates/${candidate.id}/timeline`);
+  } catch {
+    return fallbackTimeline;
   }
 }
 
