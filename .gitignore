@@ -22,5 +22,6 @@ sites/
 .playwright-cli/
 output/playwright/
 apps/api/data/
+.worktrees/
 .env
 .env.local
