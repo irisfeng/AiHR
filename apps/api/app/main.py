@@ -37,6 +37,7 @@ from .store import (
     list_resume_intake_jobs,
     load_demo_seed,
     mark_offer_payroll_ready,
+    review_candidate,
     run_resume_intake_job,
 )
 
@@ -101,6 +102,21 @@ class CandidateCreateRequest(BaseModel):
     skills: list[str] = Field(default_factory=list)
     highlights: list[str] = Field(default_factory=list)
     risks: list[str] = Field(default_factory=list)
+
+
+class CandidateReviewRequest(BaseModel):
+    decision: str
+    summary: str
+    actor: str = ""
+    next_step: str = ""
+    schedule_interview: bool = False
+    interview_round: str = "技术一面"
+    interview_time: str = ""
+    interviewer: str = ""
+    interview_mode: str = "视频"
+    interview_summary: str = ""
+    decision_window: str = "面试后 24 小时"
+    pack_status: str = "待补充"
 
 
 class JobCreateRequest(BaseModel):
@@ -247,6 +263,18 @@ def get_candidate_timeline(candidate_id: str, connection: sqlite3.Connection = D
 @app.post("/api/candidates", status_code=status.HTTP_201_CREATED)
 def post_candidate(payload: CandidateCreateRequest, connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
     return create_candidate(connection, payload.model_dump())
+
+
+@app.post("/api/candidates/{candidate_id}/review")
+def post_candidate_review(
+    candidate_id: str,
+    payload: CandidateReviewRequest,
+    connection: sqlite3.Connection = Depends(get_db),
+) -> dict[str, Any]:
+    try:
+        return review_candidate(connection, candidate_id, payload.model_dump())
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @app.get("/api/interviews")

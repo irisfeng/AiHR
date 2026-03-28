@@ -13,7 +13,11 @@ export default async function DashboardPage() {
       source={data.source}
       title={data.overview.title}
       subtitle={data.overview.subtitle}
-      actions={<button className="primary-button">新建岗位需求</button>}
+      actions={
+        <a className="primary-button" href="/candidates#candidate-review-panel">
+          去处理经理复核
+        </a>
+      }
     >
       <section className="hero-card">
         <div className="hero-card__copy">

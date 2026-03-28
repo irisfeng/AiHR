@@ -135,6 +135,63 @@ class DirectRebuildApiTests(unittest.TestCase):
         sre_job = next(item for item in jobs if item["title"] == "平台 SRE 负责人")
         self.assertEqual(sre_job["interviews"], 1)
 
+    def test_manager_review_can_schedule_interview_from_candidate_queue(self):
+        reviewed = self.client.post(
+            "/api/candidates/cand-005/review",
+            json={
+                "decision": "advance",
+                "summary": "核心后端经验匹配，先进入技术一面。",
+                "actor": "周岩",
+                "next_step": "安排技术一面",
+                "schedule_interview": True,
+                "interview_round": "技术一面",
+                "interview_time": "03-30 15:00",
+                "interviewer": "顾峰",
+                "interview_mode": "视频",
+            },
+        )
+
+        self.assertEqual(reviewed.status_code, 200)
+        payload = reviewed.json()
+        self.assertEqual(payload["candidate"]["status"], "面试中")
+        self.assertEqual(payload["candidate"]["nextAction"], "等待技术一面反馈")
+        self.assertEqual(payload["interview"]["candidateName"], "周闻笙")
+        self.assertEqual(payload["interview"]["round"], "技术一面")
+        self.assertEqual(payload["interview"]["interviewer"], "顾峰")
+
+        jobs = self.client.get("/api/jobs").json()
+        backend_job = next(item for item in jobs if item["id"] == "job-backend-01")
+        self.assertEqual(backend_job["interviews"], 7)
+
+        timeline = self.client.get("/api/candidates/cand-005/timeline").json()
+        titles = {item["title"] for item in timeline}
+        self.assertIn("经理复核：通过", titles)
+        self.assertIn("已安排技术一面", titles)
+
+    def test_manager_review_can_hold_candidate_without_creating_interview(self):
+        reviewed = self.client.post(
+            "/api/candidates/cand-002/review",
+            json={
+                "decision": "hold",
+                "summary": "需要补问多模型编排案例，再决定是否进入下一轮。",
+                "actor": "沈珂",
+                "next_step": "补充多模型编排案例",
+            },
+        )
+
+        self.assertEqual(reviewed.status_code, 200)
+        payload = reviewed.json()
+        self.assertEqual(payload["candidate"]["status"], "待补充信息")
+        self.assertEqual(payload["candidate"]["nextAction"], "补充多模型编排案例")
+        self.assertIsNone(payload["interview"])
+
+        interviews = self.client.get("/api/interviews").json()
+        self.assertEqual(len(interviews), 4)
+
+        timeline = self.client.get("/api/candidates/cand-002/timeline").json()
+        self.assertEqual(timeline[0]["title"], "经理复核：补充信息")
+        self.assertIn("补充多模型编排案例", timeline[0]["detail"])
+
     def test_submit_interview_feedback_updates_candidate_and_timeline(self):
         applied = self.client.post(
             "/api/interviews/int-002/feedback",

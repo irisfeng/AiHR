@@ -510,6 +510,71 @@ def create_candidate(connection: sqlite3.Connection, payload: Mapping[str, Any])
     return record
 
 
+def review_candidate(connection: sqlite3.Connection, candidate_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+    candidate_row = connection.execute("SELECT * FROM candidates WHERE id = ?", (candidate_id,)).fetchone()
+    if not candidate_row:
+        raise LookupError(f"Candidate not found: {candidate_id}")
+
+    now = _now_iso()
+    decision = str(payload.get("decision") or "hold").strip().lower()
+    summary = str(payload.get("summary") or "待补经理复核意见。").strip()
+    actor = str(payload.get("actor") or candidate_row["owner"] or "用人经理").strip()
+    next_step = str(payload.get("next_step") or _default_manager_review_next_step(decision)).strip()
+    candidate_status = _candidate_status_from_manager_review(decision)
+
+    connection.execute(
+        """
+        UPDATE candidates
+        SET status = ?, next_action = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (candidate_status, next_step, now, candidate_id),
+    )
+    _append_candidate_timeline_event(
+        connection,
+        candidate_id=candidate_id,
+        event_type="manager_review",
+        title=f"经理复核：{_manager_review_label(decision)}",
+        detail=_build_manager_review_detail(
+            summary=summary,
+            next_step=next_step,
+            schedule_interview=bool(payload.get("schedule_interview")),
+            interview_round=str(payload.get("interview_round") or "技术一面").strip(),
+            interview_time=str(payload.get("interview_time") or "").strip(),
+            interviewer=str(payload.get("interviewer") or "").strip(),
+        ),
+        actor=actor,
+        created_at=now,
+    )
+
+    interview_payload = None
+    if decision == "advance" and bool(payload.get("schedule_interview")):
+        interview_payload = create_interview(
+            connection,
+            {
+                "candidate_name": candidate_row["name"],
+                "role": candidate_row["role"],
+                "round": str(payload.get("interview_round") or "技术一面").strip(),
+                "mode": str(payload.get("interview_mode") or "视频").strip(),
+                "time_label": str(payload.get("interview_time") or _updated_label()).strip(),
+                "interviewer": str(payload.get("interviewer") or candidate_row["owner"] or "待分配").strip(),
+                "status": "已安排",
+                "decision_window": str(payload.get("decision_window") or "面试后 24 小时").strip(),
+                "pack_status": str(payload.get("pack_status") or "待补充").strip(),
+                "summary": str(payload.get("interview_summary") or f"经理复核通过。{summary}").strip(),
+            },
+        )
+    else:
+        connection.commit()
+
+    updated_candidate = _candidate_from_row(connection.execute("SELECT * FROM candidates WHERE id = ?", (candidate_id,)).fetchone())
+    return {
+        "candidate": updated_candidate,
+        "interview": interview_payload,
+        "timeline": list_candidate_timeline(connection, candidate_id),
+    }
+
+
 def create_job(connection: sqlite3.Connection, payload: Mapping[str, Any]) -> dict[str, Any]:
     job_id = payload.get("id") or f"job-{datetime.now().strftime('%Y%m%d%H%M%S%f')[-12:]}"
     now = _now_iso()
@@ -1447,6 +1512,45 @@ def _build_feedback_timeline_detail(summary: str, strengths: list[str], concerns
         parts.append(f"风险：{'；'.join(concerns[:2])}")
     parts.append(f"下一步：{next_step}")
     return " ".join(part for part in parts if part)
+
+
+def _build_manager_review_detail(
+    *,
+    summary: str,
+    next_step: str,
+    schedule_interview: bool,
+    interview_round: str,
+    interview_time: str,
+    interviewer: str,
+) -> str:
+    parts = [summary, f"下一步：{next_step}"]
+    if schedule_interview:
+        parts.append(f"已安排：{interview_round} · {interview_time or '待定'} · {interviewer or '待分配'}")
+    return " ".join(part for part in parts if part)
+
+
+def _manager_review_label(decision: str) -> str:
+    return {
+        "advance": "通过",
+        "hold": "补充信息",
+        "reject": "淘汰",
+    }.get(decision, "待处理")
+
+
+def _candidate_status_from_manager_review(decision: str) -> str:
+    return {
+        "advance": "建议推进",
+        "hold": "待补充信息",
+        "reject": "暂不推进",
+    }.get(decision, "待经理复核")
+
+
+def _default_manager_review_next_step(decision: str) -> str:
+    return {
+        "advance": "安排首轮面试",
+        "hold": "补充信息后再决策",
+        "reject": "同步淘汰结论并归档",
+    }.get(decision, "等待经理处理")
 
 
 def _interview_status_from_decision(decision: str) -> str:

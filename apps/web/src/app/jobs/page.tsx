@@ -17,7 +17,11 @@ export default async function JobsPage() {
       source={data.source}
       title="岗位与招聘漏斗"
       subtitle="岗位页面只保留用人经理真正会看的进度、风险和下一步。"
-      actions={<button className="primary-button">导入岗位需求</button>}
+      actions={
+        <a className="primary-button" href="#job-intake-panel">
+          导入岗位需求
+        </a>
+      }
     >
       <section className="split-grid">
         <Panel title="重点岗位" caption="按紧急程度排序，优先消除 bottleneck。">
@@ -114,9 +118,11 @@ export default async function JobsPage() {
             />
           </Panel>
 
-          <Panel title="快速录入岗位" caption="先把岗位写进持久层，漏斗和总览会自动跟着更新。">
-            <JobIntakeWorkbench disabled={data.source !== "live"} />
-          </Panel>
+          <div id="job-intake-panel">
+            <Panel title="快速录入岗位" caption="先把岗位写进持久层，漏斗和总览会自动跟着更新。">
+              <JobIntakeWorkbench disabled={data.source !== "live"} />
+            </Panel>
+          </div>
         </div>
       </section>
     </AppShell>

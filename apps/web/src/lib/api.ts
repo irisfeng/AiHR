@@ -47,6 +47,27 @@ export interface ScreeningPreviewResponse {
   next_action: string;
 }
 
+export interface CandidateReviewRequest {
+  decision: "advance" | "hold" | "reject";
+  summary: string;
+  actor: string;
+  next_step: string;
+  schedule_interview: boolean;
+  interview_round: string;
+  interview_time: string;
+  interviewer: string;
+  interview_mode: string;
+  interview_summary: string;
+  decision_window: string;
+  pack_status: string;
+}
+
+export interface CandidateReviewResponse {
+  candidate: CandidateRecord;
+  interview: InterviewRecord | null;
+  timeline: CandidateTimelineEvent[];
+}
+
 export interface AgencyBriefRequest {
   job_title: string;
   designation: string;

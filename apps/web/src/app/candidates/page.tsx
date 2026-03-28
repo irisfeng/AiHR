@@ -1,4 +1,5 @@
 import { CandidateIntakeWorkbench } from "@/components/candidate-intake-workbench";
+import { CandidateReviewWorkbench } from "@/components/candidate-review-workbench";
 import { ResumeIntakeWorkbench } from "@/components/resume-intake-workbench";
 import { ScreeningPreviewWorkbench } from "@/components/screening-preview-workbench";
 import { AppShell, Panel, StatusPill, TagList } from "@/components/chrome";
@@ -29,7 +30,11 @@ export default async function CandidatesPage() {
       source={data.source}
       title="候选人工作台"
       subtitle="候选人页默认展示证据、风险和下一步，而不是长表单。"
-      actions={<button className="primary-button">导入简历 ZIP</button>}
+      actions={
+        <a className="primary-button" href="#candidate-review-panel">
+          经理复核队列
+        </a>
+      }
     >
       <section className="split-grid">
         <Panel title="高优先级候选人" caption="优先展示 AI 初筛结果可直接支持决策的那批人。">
@@ -87,6 +92,16 @@ export default async function CandidatesPage() {
         </Panel>
 
         <div className="stack-column">
+          <div id="candidate-review-panel">
+            <Panel title="经理复核工作台" caption="导入后的候选人直接在这里做推进、补充信息或淘汰，必要时一键排面试。">
+              <CandidateReviewWorkbench
+                candidates={data.candidates}
+                interviews={data.interviews}
+                disabled={data.source !== "live"}
+              />
+            </Panel>
+          </div>
+
           <Panel title="AI 初筛预演" caption="直接调用 FastAPI，把简历字段和岗位要求变成可执行判断。">
             {primaryCandidate ? (
               <ScreeningPreviewWorkbench candidate={primaryCandidate} disabled={data.source !== "live"} />

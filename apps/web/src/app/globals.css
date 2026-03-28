@@ -560,6 +560,17 @@ button {
   gap: 8px;
 }
 
+.field-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+
+.field-checkbox input {
+  accent-color: rgb(183, 95, 45);
+}
+
 .field-stack span {
   font-size: 0.9rem;
   color: var(--text-muted);

@@ -15,7 +15,11 @@ export default async function InterviewsPage() {
       source={data.source}
       title="面试协同中心"
       subtitle="把排期、资料包和反馈时效集中在一起，减少跨群追状态。"
-      actions={<button className="primary-button">安排面试</button>}
+      actions={
+        <a className="primary-button" href="#interview-intake-panel">
+          安排面试
+        </a>
+      }
     >
       <section className="split-grid">
         <Panel title="面试日程" caption="同一屏里看清面试形式、面试官和资料包状态。">
@@ -83,9 +87,11 @@ export default async function InterviewsPage() {
             </div>
           </Panel>
 
-          <Panel title="快速安排面试" caption="直接把候选人、轮次和面试官写进持久层。">
-            <InterviewIntakeWorkbench disabled={data.source !== "live"} />
-          </Panel>
+          <div id="interview-intake-panel">
+            <Panel title="快速安排面试" caption="直接把候选人、轮次和面试官写进持久层。">
+              <InterviewIntakeWorkbench disabled={data.source !== "live"} />
+            </Panel>
+          </div>
         </div>
       </section>
     </AppShell>
