@@ -21,6 +21,7 @@ from .store import (
     apply_interview_feedback,
     bootstrap_database,
     build_work_queue,
+    build_agency_scorecards,
     create_candidate,
     create_interview,
     create_job,
@@ -31,7 +32,9 @@ from .store import (
     get_database_path,
     get_db,
     list_requisition_intakes,
+    list_candidate_export_rows,
     get_resume_intake_job,
+    generate_requisition_jd,
     list_candidate_timeline,
     list_candidates,
     list_interviews,
@@ -275,6 +278,17 @@ def post_requisition_intake(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
+@app.post("/api/requisition-intakes/{requisition_id}/generate-jd")
+def post_requisition_jd(
+    requisition_id: str,
+    connection: sqlite3.Connection = Depends(get_db),
+) -> dict[str, Any]:
+    try:
+        return generate_requisition_jd(connection, requisition_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
 @app.post("/api/jobs", status_code=status.HTTP_201_CREATED)
 def post_job(payload: JobCreateRequest, connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
     return create_job(connection, payload.model_dump())
@@ -283,6 +297,11 @@ def post_job(payload: JobCreateRequest, connection: sqlite3.Connection = Depends
 @app.get("/api/candidates")
 def get_candidates(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
     return list_candidates(connection)
+
+
+@app.get("/api/candidate-export")
+def get_candidate_export(connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
+    return list_candidate_export_rows(connection)
 
 
 @app.get("/api/candidates/{candidate_id}/timeline")
@@ -332,6 +351,11 @@ def post_interview_feedback(
 @app.get("/api/offers")
 def get_offers(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
     return list_offers(connection)
+
+
+@app.get("/api/agencies/scorecard")
+def get_agency_scorecard(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
+    return build_agency_scorecards(connection)
 
 
 @app.post("/api/offers", status_code=status.HTTP_201_CREATED)

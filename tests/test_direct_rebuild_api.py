@@ -83,6 +83,58 @@ class DirectRebuildApiTests(unittest.TestCase):
         self.assertIn("地点缺失", payload["missingFields"])
         self.assertEqual(payload["jdText"], "")
 
+    def test_generate_jd_updates_requisition_and_creates_linked_job(self):
+        intake = self.client.post(
+            "/api/requisition-intakes",
+            json={
+                "owner": "周岩",
+                "hiring_manager": "张经理",
+                "raw_request_text": "帮我招一个资深后端工程师，负责 Python 微服务和高并发链路，base 上海。",
+            },
+        ).json()
+
+        response = self.client.post(f"/api/requisition-intakes/{intake['id']}/generate-jd")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["status"], "待发代理")
+        self.assertTrue(payload["jdText"].startswith("## 职位概况"))
+        self.assertNotEqual(payload["linkedJobId"], "")
+
+        jobs = self.client.get("/api/jobs").json()
+        self.assertTrue(any(item["id"] == payload["linkedJobId"] for item in jobs))
+
+    def test_candidate_export_returns_all_candidates_with_different_final_outcomes(self):
+        rejected = self.client.post(
+            "/api/candidates/cand-004/review",
+            json={
+                "decision": "reject",
+                "summary": "业务背景不匹配，先关闭。",
+                "actor": "沈珂",
+                "next_step": "归档本次流程",
+            },
+        )
+        self.assertEqual(rejected.status_code, 200)
+
+        response = self.client.get("/api/candidate-export")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        statuses = {item["finalStatus"] for item in payload["rows"]}
+        self.assertIn("暂不推进", statuses)
+        self.assertIn("建议推进", statuses)
+        self.assertGreaterEqual(len(payload["rows"]), 5)
+
+    def test_agency_scorecard_aggregates_conversion_metrics(self):
+        response = self.client.get("/api/agencies/scorecard")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertGreaterEqual(len(payload), 1)
+        self.assertIn("agencyName", payload[0])
+        self.assertIn("resumeCount", payload[0])
+        self.assertIn("rating", payload[0])
+
     def test_create_candidate_persists_to_subsequent_reads(self):
         created = self.client.post(
             "/api/candidates",

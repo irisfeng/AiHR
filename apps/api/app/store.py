@@ -11,8 +11,10 @@ from pathlib import Path
 from typing import Any
 
 from aihr.services.recruitment_ops import (
+    build_requisition_payload,
     build_offer_handoff_notes,
     build_payroll_handoff_summary,
+    generate_requisition_agency_brief,
     get_screening_next_action,
     get_offer_next_action,
 )
@@ -543,6 +545,153 @@ def create_requisition_intake(connection: sqlite3.Connection, payload: Mapping[s
         "jdText": record["jd_text"],
         "linkedJobId": record["linked_job_id"],
     }
+
+
+def generate_requisition_jd(connection: sqlite3.Connection, requisition_id: str) -> dict[str, Any]:
+    row = connection.execute("SELECT * FROM requisition_intakes WHERE id = ?", (requisition_id,)).fetchone()
+    if not row:
+        raise LookupError(f"Requisition intake not found: {requisition_id}")
+
+    requisition = _requisition_intake_from_row(row)
+    extracted_payload = requisition["extractedPayload"]
+    source_payload = {
+        "job_title": extracted_payload.get("岗位名称") or "待确认岗位",
+        "designation": extracted_payload.get("岗位名称") or "待确认岗位",
+        "department": "待定团队",
+        "aihr_work_city": extracted_payload.get("地点") or "待定",
+        "aihr_work_mode": "Hybrid",
+        "aihr_work_schedule": "全职",
+        "aihr_salary_currency": "CNY",
+        "aihr_salary_min": "",
+        "aihr_salary_max": "",
+        "aihr_must_have_skills": extracted_payload.get("必须具备能力") or "",
+        "aihr_nice_to_have_skills": extracted_payload.get("加分项") or "",
+        "reason_for_requesting": extracted_payload.get("招聘背景") or requisition["rawRequestText"],
+    }
+    jd_body = generate_requisition_agency_brief(build_requisition_payload(source_payload))
+    jd_text = "\n".join(
+        [
+            "## 职位概况",
+            jd_body,
+            "",
+            "## 原始需求",
+            requisition["rawRequestText"],
+        ]
+    ).strip()
+
+    linked_job_id = requisition["linkedJobId"]
+    if not linked_job_id:
+        created_job = create_job(
+            connection,
+            {
+                "title": extracted_payload.get("岗位名称") or "待确认岗位",
+                "team": "待定团队",
+                "location": extracted_payload.get("地点") or "待定",
+                "mode": "Hybrid",
+                "headcount": 1,
+                "stage": "待发代理",
+                "owner": requisition["owner"],
+                "urgency": "high",
+                "summary": extracted_payload.get("招聘背景") or requisition["rawRequestText"],
+                "skills": _split_skill_tokens(extracted_payload.get("必须具备能力") or ""),
+            },
+        )
+        linked_job_id = created_job["id"]
+
+    now = _now_iso()
+    connection.execute(
+        """
+        UPDATE requisition_intakes
+        SET status = ?, jd_text = ?, linked_job_id = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        ("待发代理", jd_text, linked_job_id, now, requisition_id),
+    )
+    connection.execute(
+        """
+        UPDATE jobs
+        SET stage = ?, updated_at = ?, updated_at_label = ?
+        WHERE id = ?
+        """,
+        ("待发代理", now, _updated_label(), linked_job_id),
+    )
+    connection.commit()
+    updated_row = connection.execute("SELECT * FROM requisition_intakes WHERE id = ?", (requisition_id,)).fetchone()
+    return _requisition_intake_from_row(updated_row)
+
+
+def list_candidate_export_rows(connection: sqlite3.Connection) -> dict[str, Any]:
+    candidates = list_candidates(connection)
+    interviews = list_interviews(connection)
+    offers = {item["candidateId"]: item for item in list_offers(connection)}
+
+    rows = []
+    for candidate in candidates:
+        candidate_interviews = [
+            item
+            for item in interviews
+            if item["candidateName"] == candidate["name"] and item["role"] == candidate["role"]
+        ]
+        offer = offers.get(candidate["id"])
+        rows.append(
+            {
+                "candidateId": candidate["id"],
+                "name": candidate["name"],
+                "jobTitle": candidate["role"],
+                "source": candidate["source"],
+                "agency": _normalize_agency_name(candidate["source"]),
+                "receivedAt": "系统内已录入",
+                "aiScreeningResult": candidate["score"],
+                "managerReviewResult": candidate["status"],
+                "interviewStages": " / ".join(item["round"] for item in candidate_interviews) or "未进入面试",
+                "finalStatus": candidate["status"],
+                "salaryResult": offer["salaryExpectation"] if offer else "",
+                "currentStatus": candidate["status"],
+                "remarks": candidate["nextAction"],
+                "updatedAt": "当前",
+            }
+        )
+
+    return {"rows": rows}
+
+
+def build_agency_scorecards(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    candidates = list_candidates(connection)
+    interviews = list_interviews(connection)
+    offers = list_offers(connection)
+    grouped: dict[str, list[dict[str, Any]]] = {}
+
+    for candidate in candidates:
+        agency_name = _normalize_agency_name(candidate["source"])
+        grouped.setdefault(agency_name, []).append(candidate)
+
+    scorecards: list[dict[str, Any]] = []
+    for agency_name, agency_candidates in grouped.items():
+        total = len(agency_candidates)
+        candidate_names = {(item["name"], item["role"]) for item in agency_candidates}
+        interview_count = len(
+            [item for item in interviews if (item["candidateName"], item["role"]) in candidate_names]
+        )
+        offer_count = len(
+            [item for item in offers if any(candidate["id"] == item["candidateId"] for candidate in agency_candidates)]
+        )
+        manager_pass = len([item for item in agency_candidates if item["status"] in {"建议推进", "面试中", "Offer 已接受"}])
+        hire_count = len([item for item in agency_candidates if item["status"] in {"Offer 已接受", "已录用"}])
+
+        scorecards.append(
+            {
+                "agencyName": agency_name,
+                "resumeCount": total,
+                "screenPassRate": _rate(manager_pass, total),
+                "managerPassRate": _rate(manager_pass, total),
+                "interviewConversionRate": _rate(interview_count, total),
+                "offerConversionRate": _rate(offer_count, total),
+                "hireConversionRate": _rate(hire_count, total),
+                "rating": _scorecard_rating(offer_count, hire_count, total),
+            }
+        )
+
+    return sorted(scorecards, key=lambda item: (-item["resumeCount"], item["agencyName"]))
 
 
 def build_work_queue(connection: sqlite3.Connection) -> dict[str, Any]:
@@ -1860,6 +2009,33 @@ def _build_queue_item_from_offer(item: Mapping[str, Any]) -> dict[str, Any]:
         "waitingOn": item["payrollOwner"],
         "href": f"/interviews#offer-{item['id']}",
     }
+
+
+def _split_skill_tokens(text: str) -> list[str]:
+    return [item.strip() for item in re.split(r"[、,，/ ]+", text or "") if item.strip()]
+
+
+def _normalize_agency_name(source: str) -> str:
+    normalized = str(source or "").strip()
+    if normalized in {"手动录入", ""}:
+        return "直录"
+    return normalized
+
+
+def _rate(numerator: int, denominator: int) -> float:
+    if denominator <= 0:
+        return 0.0
+    return round((numerator / denominator) * 100, 1)
+
+
+def _scorecard_rating(offer_count: int, hire_count: int, total: int) -> str:
+    if total <= 0:
+        return "C"
+    if hire_count / total >= 0.3 or offer_count / total >= 0.4:
+        return "A"
+    if hire_count / total >= 0.1 or offer_count / total >= 0.2:
+        return "B"
+    return "C"
 
 
 def _table_count(connection: sqlite3.Connection, table_name: str) -> int:
