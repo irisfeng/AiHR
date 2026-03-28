@@ -20,14 +20,17 @@ from aihr.services.screening import screen_candidate
 from .store import (
     apply_interview_feedback,
     bootstrap_database,
+    build_work_queue,
     create_candidate,
     create_interview,
     create_job,
     create_offer,
+    create_requisition_intake,
     create_resume_intake_job,
     get_app_state,
     get_database_path,
     get_db,
+    list_requisition_intakes,
     get_resume_intake_job,
     list_candidate_timeline,
     list_candidates,
@@ -165,6 +168,12 @@ class OfferCreateRequest(BaseModel):
     payroll_handoff_status: str = "Not Started"
 
 
+class RequisitionIntakeCreateRequest(BaseModel):
+    owner: str = ""
+    hiring_manager: str = ""
+    raw_request_text: str
+
+
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok", "database": str(get_database_path())}
@@ -243,6 +252,27 @@ def get_overview(connection: sqlite3.Connection = Depends(get_db)) -> dict[str, 
 @app.get("/api/jobs")
 def get_jobs(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
     return list_jobs(connection)
+
+
+@app.get("/api/work-queue")
+def get_work_queue(connection: sqlite3.Connection = Depends(get_db)) -> dict[str, Any]:
+    return build_work_queue(connection)
+
+
+@app.get("/api/requisition-intakes")
+def get_requisition_intakes(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
+    return list_requisition_intakes(connection)
+
+
+@app.post("/api/requisition-intakes", status_code=status.HTTP_201_CREATED)
+def post_requisition_intake(
+    payload: RequisitionIntakeCreateRequest,
+    connection: sqlite3.Connection = Depends(get_db),
+) -> dict[str, Any]:
+    try:
+        return create_requisition_intake(connection, payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @app.post("/api/jobs", status_code=status.HTTP_201_CREATED)

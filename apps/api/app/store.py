@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
@@ -68,6 +69,20 @@ def bootstrap_database() -> None:
             CREATE TABLE IF NOT EXISTS app_state (
                 key TEXT PRIMARY KEY,
                 value_json TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS requisition_intakes (
+                id TEXT PRIMARY KEY,
+                owner TEXT NOT NULL,
+                hiring_manager TEXT NOT NULL,
+                raw_request_text TEXT NOT NULL,
+                status TEXT NOT NULL,
+                extracted_payload_json TEXT NOT NULL,
+                missing_fields_json TEXT NOT NULL,
+                jd_text TEXT NOT NULL,
+                linked_job_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS jobs (
@@ -208,6 +223,36 @@ def bootstrap_database() -> None:
 def seed_if_empty(connection: sqlite3.Connection) -> None:
     seed = load_demo_seed()
     now = _now_iso()
+
+    if _table_count(connection, "requisition_intakes") == 0:
+        extracted_payload = {
+            "岗位名称": "资深后端工程师",
+            "招聘背景": "平台研发团队需要补充后端主力，支撑交易链路和微服务治理。",
+            "核心职责": "负责 Python 服务开发、接口稳定性与高并发场景优化。",
+            "必须具备能力": "Python、微服务、高并发",
+            "加分项": "FastAPI、PostgreSQL、Redis",
+        }
+        connection.execute(
+            """
+            INSERT INTO requisition_intakes (
+                id, owner, hiring_manager, raw_request_text, status, extracted_payload_json,
+                missing_fields_json, jd_text, linked_job_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "req-seed-001",
+                "周岩",
+                "张经理",
+                "帮我招一个资深后端，偏 Python、微服务和高并发，越快到岗越好。",
+                "待整理",
+                _json_dump(extracted_payload),
+                _json_dump(["地点缺失", "职级缺失"]),
+                "",
+                "",
+                now,
+                now,
+            ),
+        )
 
     if _table_count(connection, "jobs") == 0:
         connection.executemany(
@@ -435,6 +480,112 @@ def list_candidate_timeline(connection: sqlite3.Connection, candidate_id: str) -
         (candidate_id,),
     ).fetchall()
     return [_timeline_event_from_row(row) for row in rows]
+
+
+def list_requisition_intakes(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """
+        SELECT * FROM requisition_intakes
+        ORDER BY updated_at DESC, created_at DESC
+        """
+    ).fetchall()
+    return [_requisition_intake_from_row(row) for row in rows]
+
+
+def create_requisition_intake(connection: sqlite3.Connection, payload: Mapping[str, Any]) -> dict[str, Any]:
+    now = _now_iso()
+    requisition_id = payload.get("id") or f"req-{datetime.now().strftime('%Y%m%d%H%M%S%f')[-12:]}"
+    raw_request_text = str(payload.get("raw_request_text") or "").strip()
+    if not raw_request_text:
+        raise ValueError("Requisition intake text cannot be empty")
+
+    extracted_payload = _extract_requisition_fields(raw_request_text)
+    missing_fields = _calculate_requisition_missing_fields(extracted_payload)
+    record = {
+        "id": requisition_id,
+        "owner": str(payload.get("owner") or "待分配").strip(),
+        "hiring_manager": str(payload.get("hiring_manager") or "待确认").strip(),
+        "raw_request_text": raw_request_text,
+        "status": "待确认 JD",
+        "extracted_payload": extracted_payload,
+        "missing_fields": missing_fields,
+        "jd_text": "",
+        "linked_job_id": "",
+    }
+
+    connection.execute(
+        """
+        INSERT INTO requisition_intakes (
+            id, owner, hiring_manager, raw_request_text, status, extracted_payload_json,
+            missing_fields_json, jd_text, linked_job_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            record["id"],
+            record["owner"],
+            record["hiring_manager"],
+            record["raw_request_text"],
+            record["status"],
+            _json_dump(record["extracted_payload"]),
+            _json_dump(record["missing_fields"]),
+            record["jd_text"],
+            record["linked_job_id"],
+            now,
+            now,
+        ),
+    )
+    connection.commit()
+    return record | {
+        "hiringManager": record["hiring_manager"],
+        "rawRequestText": record["raw_request_text"],
+        "extractedPayload": record["extracted_payload"],
+        "missingFields": record["missing_fields"],
+        "jdText": record["jd_text"],
+        "linkedJobId": record["linked_job_id"],
+    }
+
+
+def build_work_queue(connection: sqlite3.Connection) -> dict[str, Any]:
+    requisitions = list_requisition_intakes(connection)
+    candidates = list_candidates(connection)
+    interviews = list_interviews(connection)
+    offers = list_offers(connection)
+
+    requisition_intake_items = [
+        _build_queue_item_from_requisition(item, "待整理字段并补齐缺失信息")
+        for item in requisitions
+        if item["status"] == "待整理"
+    ]
+    jd_confirmation_items = [
+        _build_queue_item_from_requisition(item, "确认岗位信息并生成 JD")
+        for item in requisitions
+        if item["status"] == "待确认 JD"
+    ]
+    manager_review_items = [
+        _build_queue_item_from_candidate(item, "发给用人经理复核")
+        for item in candidates
+        if item["status"] == "待经理复核"
+    ]
+    interview_closeout_items = [
+        _build_queue_item_from_interview(item)
+        for item in interviews
+        if item["status"] in {"已安排", "待反馈"}
+    ] + [
+        _build_queue_item_from_offer(item)
+        for item in offers
+        if item["payrollHandoffStatus"] != "Ready"
+    ]
+
+    return {
+        "groups": [
+            _queue_group("requisition_intake", "待整理需求", requisition_intake_items),
+            _queue_group("jd_confirmation", "待生成 / 确认 JD", jd_confirmation_items),
+            _queue_group("agency_dispatch", "待发代理", []),
+            _queue_group("resume_intake", "待处理简历包", []),
+            _queue_group("manager_review", "待经理复核", manager_review_items),
+            _queue_group("interview_or_closeout", "待约面试 / 待补录用资料", interview_closeout_items),
+        ]
+    }
 
 
 def get_app_state(connection: sqlite3.Connection, key: str, fallback: Any) -> Any:
@@ -1185,6 +1336,20 @@ def run_resume_intake_job(intake_job_id: str) -> None:
             connection.commit()
 
 
+def _requisition_intake_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "owner": row["owner"],
+        "hiringManager": row["hiring_manager"],
+        "rawRequestText": row["raw_request_text"],
+        "status": row["status"],
+        "extractedPayload": _json_load(row["extracted_payload_json"]),
+        "missingFields": _json_load(row["missing_fields_json"]),
+        "jdText": row["jd_text"],
+        "linkedJobId": row["linked_job_id"],
+    }
+
+
 def _job_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
@@ -1603,6 +1768,98 @@ def _build_job_requirements(job_row: sqlite3.Row) -> str:
         ]
         if part
     )
+
+
+def _extract_requisition_fields(raw_request_text: str) -> dict[str, str]:
+    title = "待确认岗位"
+    title_match = re.search(r"(资深后端|后端|算法平台|算法|招聘运营|SRE|运维开发)", raw_request_text, re.IGNORECASE)
+    if title_match:
+        keyword = title_match.group(1)
+        title = keyword if keyword.endswith("工程师") else f"{keyword}工程师"
+
+    responsibilities = raw_request_text.strip()
+    must_haves = "、".join(match.group(0) for match in re.finditer(r"Python|微服务|高并发|FastAPI|Redis|PostgreSQL|Kafka", raw_request_text, re.IGNORECASE))
+    if not must_haves:
+        must_haves = "待补必须能力"
+
+    return {
+        "岗位名称": title,
+        "招聘背景": raw_request_text.strip(),
+        "核心职责": responsibilities,
+        "必须具备能力": must_haves,
+        "加分项": "待补加分项",
+        "地点": "待确认" if not re.search(r"上海|北京|杭州|深圳|广州", raw_request_text) else re.search(r"上海|北京|杭州|深圳|广州", raw_request_text).group(0),
+        "职级": "待确认" if "资深" not in raw_request_text and "高级" not in raw_request_text else ("资深" if "资深" in raw_request_text else "高级"),
+    }
+
+
+def _calculate_requisition_missing_fields(extracted_payload: Mapping[str, str]) -> list[str]:
+    missing_fields: list[str] = []
+    if extracted_payload.get("地点") in {"", "待确认"}:
+        missing_fields.append("地点缺失")
+    if extracted_payload.get("职级") in {"", "待确认"}:
+        missing_fields.append("职级缺失")
+    if extracted_payload.get("必须具备能力") in {"", "待补必须能力"}:
+        missing_fields.append("必备技能不明确")
+    return missing_fields
+
+
+def _queue_group(key: str, title: str, items: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "key": key,
+        "title": title,
+        "count": len(items),
+        "items": items,
+    }
+
+
+def _build_queue_item_from_requisition(item: Mapping[str, Any], next_action: str) -> dict[str, Any]:
+    title = str(item["extractedPayload"].get("岗位名称") or item["rawRequestText"][:20]).strip()
+    return {
+        "id": item["id"],
+        "title": title,
+        "stage": item["status"],
+        "nextAction": next_action,
+        "dueLabel": "今天",
+        "waitingOn": item["owner"],
+        "href": f"/jobs#requisition-{item['id']}",
+    }
+
+
+def _build_queue_item_from_candidate(item: Mapping[str, Any], next_action: str) -> dict[str, Any]:
+    return {
+        "id": item["id"],
+        "title": f"{item['name']} · {item['role']}",
+        "stage": item["status"],
+        "nextAction": next_action,
+        "dueLabel": "今天",
+        "waitingOn": item["owner"],
+        "href": f"/candidates#{item['id']}",
+    }
+
+
+def _build_queue_item_from_interview(item: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "id": item["id"],
+        "title": f"{item['candidateName']} · {item['round']}",
+        "stage": item["status"],
+        "nextAction": "确认时间或追面试反馈",
+        "dueLabel": item["time"],
+        "waitingOn": item["interviewer"],
+        "href": f"/interviews#{item['id']}",
+    }
+
+
+def _build_queue_item_from_offer(item: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "id": item["id"],
+        "title": f"{item['candidateName']} · {item['openingTitle']}",
+        "stage": item["status"],
+        "nextAction": item["nextAction"],
+        "dueLabel": "本周",
+        "waitingOn": item["payrollOwner"],
+        "href": f"/interviews#offer-{item['id']}",
+    }
 
 
 def _table_count(connection: sqlite3.Connection, table_name: str) -> int:

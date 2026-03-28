@@ -53,6 +53,36 @@ class DirectRebuildApiTests(unittest.TestCase):
         self.assertEqual(len(offers.json()), 2)
         self.assertEqual(overview.json()["title"], "AIHR Recruiting OS")
 
+    def test_work_queue_groups_items_by_hr_action(self):
+        response = self.client.get("/api/work-queue")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["groups"][0]["key"], "requisition_intake")
+        self.assertEqual(payload["groups"][0]["title"], "待整理需求")
+        self.assertGreaterEqual(payload["groups"][0]["count"], 1)
+        self.assertIn("title", payload["groups"][0]["items"][0])
+        self.assertIn("nextAction", payload["groups"][0]["items"][0])
+
+    def test_create_requisition_intake_extracts_missing_fields_and_creates_draft(self):
+        response = self.client.post(
+            "/api/requisition-intakes",
+            json={
+                "owner": "周岩",
+                "hiring_manager": "张经理",
+                "raw_request_text": "想招一个资深后端，偏 Python 和微服务，最好尽快到岗。",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["owner"], "周岩")
+        self.assertEqual(payload["hiringManager"], "张经理")
+        self.assertEqual(payload["status"], "待确认 JD")
+        self.assertIn("Python", " ".join(payload["extractedPayload"].values()))
+        self.assertIn("地点缺失", payload["missingFields"])
+        self.assertEqual(payload["jdText"], "")
+
     def test_create_candidate_persists_to_subsequent_reads(self):
         created = self.client.post(
             "/api/candidates",
