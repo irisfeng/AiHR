@@ -1,16 +1,24 @@
 import {
   buildFallbackCandidateTimeline,
+  fallbackAgencyScorecards,
+  fallbackCandidateExportRows,
+  fallbackRequisitionIntakes,
   fallbackRecruitmentData,
+  fallbackWorkQueue,
   selectActiveOffers,
   selectPendingFeedback,
   sortTopCandidates,
   sortUrgentJobs,
+  type AgencyScorecard,
   type CandidateRecord,
+  type CandidateExportRow,
   type CandidateTimelineEvent,
   type InterviewRecord,
   type JobRecord,
   type OfferRecord,
   type OverviewData,
+  type RequisitionIntakeRecord,
+  type WorkQueueData,
 } from "@/lib/site-data";
 
 export type DataSource = "live" | "fallback";
@@ -130,6 +138,12 @@ export interface ResumeIntakeJobRecord {
   items: ResumeIntakeJobItem[];
 }
 
+export interface RequisitionIntakeCreateRequest {
+  owner: string;
+  hiring_manager: string;
+  raw_request_text: string;
+}
+
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
 
 export const serverApiBaseUrl =
@@ -146,6 +160,22 @@ async function fetchJson<T>(path: string): Promise<T> {
 
   if (!response.ok) {
     throw new Error(`Failed to fetch ${path}: ${response.status}`);
+  }
+
+  return (await response.json()) as T;
+}
+
+async function postJson<T>(path: string, payload: unknown): Promise<T> {
+  const response = await fetch(`${browserApiBaseUrl}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to post ${path}: ${response.status}`);
   }
 
   return (await response.json()) as T;
@@ -203,6 +233,47 @@ export async function getResumeIntakeJob(intakeJobId: string): Promise<ResumeInt
     return await fetchJson<ResumeIntakeJobRecord>(`/api/intake-jobs/${intakeJobId}`);
   } catch {
     return null;
+  }
+}
+
+export async function getWorkQueue(): Promise<WorkQueueData> {
+  try {
+    return await fetchJson<WorkQueueData>("/api/work-queue");
+  } catch {
+    return fallbackWorkQueue;
+  }
+}
+
+export async function getRequisitionIntakes(): Promise<RequisitionIntakeRecord[]> {
+  try {
+    return await fetchJson<RequisitionIntakeRecord[]>("/api/requisition-intakes");
+  } catch {
+    return fallbackRequisitionIntakes;
+  }
+}
+
+export async function createRequisitionIntake(payload: RequisitionIntakeCreateRequest): Promise<RequisitionIntakeRecord> {
+  return postJson<RequisitionIntakeRecord>("/api/requisition-intakes", payload);
+}
+
+export async function generateRequisitionJd(requisitionId: string): Promise<RequisitionIntakeRecord> {
+  return postJson<RequisitionIntakeRecord>(`/api/requisition-intakes/${requisitionId}/generate-jd`, {});
+}
+
+export async function getCandidateExportRows(): Promise<CandidateExportRow[]> {
+  try {
+    const payload = await fetchJson<{ rows: CandidateExportRow[] }>("/api/candidate-export");
+    return payload.rows;
+  } catch {
+    return fallbackCandidateExportRows;
+  }
+}
+
+export async function getAgencyScorecards(): Promise<AgencyScorecard[]> {
+  try {
+    return await fetchJson<AgencyScorecard[]>("/api/agencies/scorecard");
+  } catch {
+    return fallbackAgencyScorecards;
   }
 }
 

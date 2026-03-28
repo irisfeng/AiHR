@@ -3,32 +3,38 @@ import type { ReactNode } from "react";
 
 import type { DataSource } from "@/lib/api";
 
-type SectionKey = "dashboard" | "jobs" | "candidates" | "interviews";
+type SectionKey = "queue" | "jobs" | "candidates" | "interviews" | "settings";
 
 const navigation = [
   {
-    key: "dashboard",
-    label: "总览",
+    key: "queue",
+    label: "待办",
     href: "/",
-    caption: "Recruiting OS",
+    caption: "HR 执行台",
   },
   {
     key: "jobs",
-    label: "岗位",
+    label: "岗位需求",
     href: "/jobs",
-    caption: "需求与漏斗",
+    caption: "采集与外发",
   },
   {
     key: "candidates",
     label: "候选人",
     href: "/candidates",
-    caption: "筛选与行动",
+    caption: "导入与复核",
   },
   {
     key: "interviews",
-    label: "面试",
+    label: "面试与录用",
     href: "/interviews",
-    caption: "协同与反馈",
+    caption: "安排与收口",
+  },
+  {
+    key: "settings",
+    label: "设置与模板",
+    href: "/settings",
+    caption: "模板与口径",
   },
 ] as const;
 
@@ -48,8 +54,8 @@ export function AppShell(props: {
         <div className="brand-mark">
           <div className="brand-mark__pulse" />
           <div>
-            <p className="eyebrow">AIHR Direct Rebuild</p>
-            <h1>Recruiting OS</h1>
+            <p className="eyebrow">AIHR HR Specialist MVP</p>
+            <h1>待办工作台</h1>
           </div>
         </div>
         <nav className="nav-list" aria-label="Primary">
@@ -67,7 +73,7 @@ export function AppShell(props: {
         <div className="sidebar-card">
           <p className="eyebrow">核心原则</p>
           <p>
-            用一个工作台覆盖需求、导入、筛选、面试和 Offer，减少跳转、减少手工同步、减少追人。
+            默认先看下一步动作，不先看驾驶舱。HR 负责推进，用人经理只负责判断。
           </p>
         </div>
       </aside>
@@ -75,16 +81,15 @@ export function AppShell(props: {
       <main className="main-column">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Simple. Elegant. Fast.</p>
+            <p className="eyebrow">Queue First</p>
             <h2>{title}</h2>
             <p className="subtle-text">{subtitle}</p>
           </div>
           <div className="topbar__actions">
             {source ? <DataSourceBadge source={source} /> : null}
-            <div className="search-pill">搜索岗位、候选人、面试官</div>
             <div className="identity-pill">
-              <strong>Ton y</strong>
-              <span>Hiring Admin</span>
+              <strong>周岩</strong>
+              <span>HR 专员</span>
             </div>
             {actions}
           </div>

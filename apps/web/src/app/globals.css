@@ -376,6 +376,99 @@ button {
   align-items: start;
 }
 
+.queue-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at right top, rgba(232, 175, 125, 0.28), transparent 36%),
+    linear-gradient(180deg, rgba(255, 252, 248, 0.94), rgba(246, 236, 223, 0.9));
+  box-shadow: var(--shadow);
+}
+
+.queue-hero h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.queue-hero__stats {
+  min-width: 280px;
+  display: grid;
+  gap: 12px;
+}
+
+.queue-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.queue-group {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.queue-group__header {
+  margin-bottom: 14px;
+}
+
+.queue-group__header h3 {
+  margin: 0;
+}
+
+.queue-group__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.queue-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(114, 82, 58, 0.12);
+  background: rgba(255, 251, 246, 0.98);
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.queue-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(183, 95, 45, 0.24);
+}
+
+.queue-card--empty {
+  cursor: default;
+}
+
+.queue-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.queue-card__top span,
+.queue-card small {
+  color: var(--text-muted);
+}
+
+.split-grid--support {
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+}
+
+.score-badge--compact {
+  min-width: 44px;
+  height: 44px;
+  font-size: 1.15rem;
+}
+
 .panel {
   padding: 20px;
   border-radius: var(--radius-lg);
@@ -696,7 +789,9 @@ button {
   .pipeline-grid,
   .split-grid,
   .dashboard-grid,
-  .candidate-card__body {
+  .candidate-card__body,
+  .queue-board,
+  .split-grid--support {
     grid-template-columns: 1fr;
   }
 
@@ -704,7 +799,8 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .hero-card {
+  .hero-card,
+  .queue-hero {
     flex-direction: column;
   }
 }
@@ -734,7 +830,8 @@ button {
   .list-card__headline,
   .candidate-card__header,
   .compact-card__top,
-  .timeline-item__top {
+  .timeline-item__top,
+  .queue-card__top {
     flex-direction: column;
     align-items: flex-start;
   }
