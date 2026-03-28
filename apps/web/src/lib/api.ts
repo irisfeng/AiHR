@@ -86,6 +86,7 @@ export interface ResumeIntakeJobItem {
   parserEngine: string;
   parsedResume: Record<string, unknown>;
   candidateId: string;
+  candidateSummary?: CandidateRecord;
 }
 
 export interface ResumeIntakeJobRecord {
@@ -173,6 +174,14 @@ export async function getResumeIntakeJobs(): Promise<ResumeIntakeJobRecord[]> {
     return await fetchJson<ResumeIntakeJobRecord[]>("/api/intake-jobs");
   } catch {
     return [];
+  }
+}
+
+export async function getResumeIntakeJob(intakeJobId: string): Promise<ResumeIntakeJobRecord | null> {
+  try {
+    return await fetchJson<ResumeIntakeJobRecord>(`/api/intake-jobs/${intakeJobId}`);
+  } catch {
+    return null;
   }
 }
 

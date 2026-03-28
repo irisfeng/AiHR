@@ -419,7 +419,10 @@ def get_resume_intake_job(connection: sqlite3.Connection, intake_job_id: str) ->
         """,
         (intake_job_id,),
     ).fetchall()
-    return _resume_intake_job_from_row(row, items=[_resume_intake_item_from_row(item) for item in items])
+    return _resume_intake_job_from_row(
+        row,
+        items=[_resume_intake_item_with_candidate_summary(connection, item) for item in items],
+    )
 
 
 def list_candidate_timeline(connection: sqlite3.Connection, candidate_id: str) -> list[dict[str, Any]]:
@@ -1242,6 +1245,18 @@ def _resume_intake_item_from_row(row: sqlite3.Row) -> dict[str, Any]:
         "parsedResume": _json_load(row["parsed_resume_json"]),
         "candidateId": row["candidate_id"],
     }
+
+
+def _resume_intake_item_with_candidate_summary(connection: sqlite3.Connection, row: sqlite3.Row) -> dict[str, Any]:
+    item = _resume_intake_item_from_row(row)
+    candidate_id = item["candidateId"]
+    if not candidate_id:
+        return item
+
+    candidate_row = connection.execute("SELECT * FROM candidates WHERE id = ?", (candidate_id,)).fetchone()
+    if candidate_row:
+        item["candidateSummary"] = _candidate_from_row(candidate_row)
+    return item
 
 
 def _timeline_event_from_row(row: sqlite3.Row) -> dict[str, Any]:

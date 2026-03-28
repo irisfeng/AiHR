@@ -291,6 +291,12 @@ class DirectRebuildApiTests(unittest.TestCase):
         self.assertEqual(parsed_item["parserEngine"], "DOCX")
         self.assertEqual(parsed_item["parsedResume"]["name"], "张三")
         self.assertTrue(parsed_item["candidateId"])
+        self.assertEqual(parsed_item["candidateSummary"]["name"], "张三")
+        self.assertIn(parsed_item["candidateSummary"]["status"], {"建议推进", "待经理复核", "建议暂缓"})
+        self.assertIsInstance(parsed_item["candidateSummary"]["score"], int)
+        self.assertTrue(parsed_item["candidateSummary"]["nextAction"])
+        self.assertTrue(parsed_item["candidateSummary"]["highlights"])
+        self.assertTrue(parsed_item["candidateSummary"]["risks"])
 
     def _wait_for_intake_job(self, job_id: str) -> dict:
         deadline = time.time() + 5

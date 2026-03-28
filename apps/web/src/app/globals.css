@@ -407,6 +407,29 @@ button {
   padding: 16px;
 }
 
+.note-card--interactive {
+  width: 100%;
+  appearance: none;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.note-card--interactive:hover {
+  transform: translateY(-1px);
+  border-color: rgba(171, 121, 84, 0.26);
+}
+
+.note-card--active {
+  border-color: rgba(183, 95, 45, 0.28);
+  background: rgba(255, 247, 238, 0.98);
+  box-shadow: 0 18px 32px rgba(91, 56, 28, 0.08);
+}
+
 .list-card__headline,
 .compact-card__top,
 .candidate-card__header,
