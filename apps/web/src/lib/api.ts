@@ -144,6 +144,36 @@ export interface RequisitionIntakeCreateRequest {
   raw_request_text: string;
 }
 
+export interface AgencyDispatchRecord {
+  id: string;
+  jobId: string;
+  agencyName: string;
+  dispatchStatus: string;
+  sentAtLabel: string;
+  firstResumeAtLabel: string;
+  notes: string;
+}
+
+export interface AgencyDispatchCreateRequest {
+  job_id: string;
+  agency_name: string;
+  sent_at_label: string;
+  notes: string;
+}
+
+export interface ManagerReviewRequestRecord {
+  id: string;
+  candidateId: string;
+  candidateName: string;
+  role: string;
+  status: string;
+  hrNote: string;
+  score: number;
+  skills: string[];
+  highlights: string[];
+  risks: string[];
+}
+
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
 
 export const serverApiBaseUrl =
@@ -275,6 +305,30 @@ export async function getAgencyScorecards(): Promise<AgencyScorecard[]> {
   } catch {
     return fallbackAgencyScorecards;
   }
+}
+
+export async function getAgencyDispatches(): Promise<AgencyDispatchRecord[]> {
+  try {
+    return await fetchJson<AgencyDispatchRecord[]>("/api/agency-dispatches");
+  } catch {
+    return [];
+  }
+}
+
+export async function createAgencyDispatch(payload: AgencyDispatchCreateRequest): Promise<AgencyDispatchRecord> {
+  return postJson<AgencyDispatchRecord>("/api/agency-dispatches", payload);
+}
+
+export async function getManagerReviewRequests(): Promise<ManagerReviewRequestRecord[]> {
+  try {
+    return await fetchJson<ManagerReviewRequestRecord[]>("/api/manager-review-requests");
+  } catch {
+    return [];
+  }
+}
+
+export function getCandidateExportDownloadUrl() {
+  return `${browserApiBaseUrl}/api/candidate-export.xlsx`;
 }
 
 export function deriveWorkspaceSlices(data: RecruitmentWorkspaceData) {

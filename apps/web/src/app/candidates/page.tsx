@@ -1,143 +1,96 @@
-import { CandidateIntakeWorkbench } from "@/components/candidate-intake-workbench";
-import { CandidateReviewWorkbench } from "@/components/candidate-review-workbench";
+import { CandidateExportPanel } from "@/components/candidate-export-panel";
 import { ResumeIntakeWorkbench } from "@/components/resume-intake-workbench";
-import { ScreeningPreviewWorkbench } from "@/components/screening-preview-workbench";
 import { AppShell, Panel, StatusPill, TagList } from "@/components/chrome";
-import { deriveWorkspaceSlices, getCandidateTimeline, getRecruitmentWorkspaceData, getResumeIntakeJobs } from "@/lib/api";
-
-function scoreTone(score: number): "positive" | "accent" | "warning" {
-  if (score >= 85) {
-    return "positive";
-  }
-  if (score >= 75) {
-    return "accent";
-  }
-  return "warning";
-}
+import {
+  getCandidateExportRows,
+  getManagerReviewRequests,
+  getRecruitmentWorkspaceData,
+  getResumeIntakeJobs,
+} from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export default async function CandidatesPage() {
-  const data = await getRecruitmentWorkspaceData();
-  const { topCandidates } = deriveWorkspaceSlices(data);
-  const primaryCandidate = topCandidates[0];
-  const primaryTimeline = primaryCandidate ? await getCandidateTimeline(primaryCandidate, data.interviews) : [];
-  const intakeJobs = await getResumeIntakeJobs();
+  const [data, intakeJobs, managerRequests, exportRows] = await Promise.all([
+    getRecruitmentWorkspaceData(),
+    getResumeIntakeJobs(),
+    getManagerReviewRequests(),
+    getCandidateExportRows(),
+  ]);
+  const recentCandidates = data.candidates.slice(0, 6);
 
   return (
     <AppShell
       section="candidates"
       source={data.source}
-      title="候选人工作台"
-      subtitle="候选人页默认展示证据、风险和下一步，而不是长表单。"
+      title="简历导入与候选人总表"
+      subtitle="先处理 ZIP 简历包，再跟踪待经理复核的人，最后导出全量候选人台账。"
       actions={
-        <a className="primary-button" href="#candidate-review-panel">
-          经理复核队列
+        <a className="primary-button" href="/manager/reviews">
+          打开经理复核入口
         </a>
       }
     >
       <section className="split-grid">
-        <Panel title="高优先级候选人" caption="优先展示 AI 初筛结果可直接支持决策的那批人。">
-          {topCandidates.length ? (
-            <div className="stack-list">
-              {topCandidates.map((candidate) => (
-                <article className="candidate-card" key={candidate.id}>
-                  <div className="candidate-card__header">
-                    <div>
-                      <h4>{candidate.name}</h4>
-                      <p className="subtle-text">
-                        {candidate.role} · {candidate.city} · {candidate.experience}
-                      </p>
-                    </div>
-                    <div className="candidate-card__meta">
-                      <StatusPill tone={scoreTone(candidate.score)}>{candidate.status}</StatusPill>
-                      <div className="score-badge">{candidate.score}</div>
-                    </div>
-                  </div>
-
-                  <div className="candidate-card__body">
-                    <div>
-                      <p className="eyebrow">高亮证据</p>
-                      <ul className="bullet-list">
-                        {candidate.highlights.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <p className="eyebrow">待确认风险</p>
-                      <ul className="bullet-list bullet-list--soft">
-                        {candidate.risks.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="candidate-card__footer">
-                    <div>
-                      <TagList items={candidate.skills} />
-                      <p className="subtle-text">
-                        负责人：{candidate.owner} · 来源：{candidate.source}
-                      </p>
-                    </div>
-                    <div className="action-chip">{candidate.nextAction}</div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="subtle-text">还没有候选人数据。启动 API 或导入简历后，这里会显示优先候选人。</p>
-          )}
-        </Panel>
-
         <div className="stack-column">
-          <div id="candidate-review-panel">
-            <Panel title="经理复核工作台" caption="导入后的候选人直接在这里做推进、补充信息或淘汰，必要时一键排面试。">
-              <CandidateReviewWorkbench
-                candidates={data.candidates}
-                interviews={data.interviews}
-                disabled={data.source !== "live"}
-              />
-            </Panel>
-          </div>
-
-          <Panel title="AI 初筛预演" caption="直接调用 FastAPI，把简历字段和岗位要求变成可执行判断。">
-            {primaryCandidate ? (
-              <ScreeningPreviewWorkbench candidate={primaryCandidate} disabled={data.source !== "live"} />
-            ) : (
-              <p className="subtle-text">还没有可预演的候选人。先导入简历或接通实时 API 后再运行初筛预演。</p>
-            )}
+          <Panel title="ZIP 简历导入与 AI 初筛" caption="上传代理商发来的 ZIP 简历包，系统后台解析并自动写入候选人。">
+            <ResumeIntakeWorkbench disabled={data.source !== "live"} jobs={data.jobs} recentJobs={intakeJobs} />
           </Panel>
 
-          <Panel title="ZIP 简历导入" caption="上传 ZIP 后后台解析并自动写入候选人，不再手动拆包复制。">
-            <ResumeIntakeWorkbench jobs={data.jobs} recentJobs={intakeJobs} disabled={data.source !== "live"} />
-          </Panel>
-
-          <Panel
-            title={primaryCandidate ? `${primaryCandidate.name} 时间线` : "候选人时间线"}
-            caption="把录入、面试安排和反馈放在一条线里，减少跨页面追状态。"
-          >
-            {primaryTimeline.length ? (
-              <div className="timeline-feed">
-                {primaryTimeline.map((event) => (
-                  <article className="timeline-item" key={event.id}>
-                    <div className="timeline-item__top">
-                      <strong>{event.title}</strong>
-                      <span>{event.happenedAt}</span>
+          <Panel title="最近进入系统的候选人" caption="只看刚导入或刚推进的人，避免在大表里翻找。">
+            {recentCandidates.length ? (
+              <div className="stack-list">
+                {recentCandidates.map((candidate) => (
+                  <article className="list-card" key={candidate.id}>
+                    <div className="list-card__headline">
+                      <div>
+                        <h4>
+                          {candidate.name} · {candidate.role}
+                        </h4>
+                        <p className="subtle-text">
+                          {candidate.city} · {candidate.experience} · {candidate.source}
+                        </p>
+                      </div>
+                      <StatusPill tone={candidate.status === "待经理复核" ? "warning" : "accent"}>{candidate.status}</StatusPill>
                     </div>
-                    <p>{event.detail}</p>
-                    <small>执行人：{event.actor}</small>
+                    <p className="list-card__body">{candidate.nextAction}</p>
+                    <TagList items={candidate.skills.slice(0, 5)} />
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="subtle-text">当前候选人还没有时间线记录。</p>
+              <p className="subtle-text">当前还没有候选人记录。</p>
+            )}
+          </Panel>
+        </div>
+
+        <div className="stack-column">
+          <Panel title="待经理复核" caption="HR 在这里看是否已发给经理，以及当前卡在谁。">
+            {managerRequests.length ? (
+              <div className="stack-list">
+                {managerRequests.map((request) => (
+                  <article className="note-card" key={request.id}>
+                    <div className="compact-card__top">
+                      <div>
+                        <h4>
+                          {request.candidateName} · {request.role}
+                        </h4>
+                        <p className="subtle-text">{request.hrNote}</p>
+                      </div>
+                      <div className="score-badge score-badge--compact">{request.score}</div>
+                    </div>
+                    <TagList items={request.skills.slice(0, 4)} />
+                    <small>等待用人经理反馈</small>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="subtle-text">当前没有待经理复核的候选人。</p>
             )}
           </Panel>
 
-          <Panel title="快速录入候选人" caption="先把新候选人写进持久层，再决定是否立即运行 AI 初筛。">
-            <CandidateIntakeWorkbench disabled={data.source !== "live"} />
+          <Panel title="候选人总表导出" caption="无论录用与否都保留在总表里，可用于下载、汇报与代理复盘。">
+            <CandidateExportPanel disabled={data.source !== "live"} rows={exportRows} />
           </Panel>
         </div>
       </section>

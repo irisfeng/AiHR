@@ -27,7 +27,7 @@ function getCandidateKey(candidate: CandidateRecord) {
 }
 
 function buildDefaultForm(candidate: CandidateRecord): CandidateReviewRequest {
-  const advance = candidate.status === "建议推进";
+  const advance = candidate.status === "建议推进" || candidate.status === "待经理复核";
   return {
     decision: advance ? "advance" : "hold",
     summary: "",
@@ -48,8 +48,9 @@ export function CandidateReviewWorkbench(props: {
   candidates: CandidateRecord[];
   interviews: InterviewRecord[];
   disabled?: boolean;
+  reviewScope?: "general" | "manager";
 }) {
-  const { candidates, interviews, disabled = false } = props;
+  const { candidates, interviews, disabled = false, reviewScope = "general" } = props;
   const router = useRouter();
   const activeInterviewKeys = useMemo(
     () =>
@@ -61,13 +62,20 @@ export function CandidateReviewWorkbench(props: {
     [interviews],
   );
   const queueCandidates = useMemo(
-    () =>
-      candidates
+    () => {
+      const base = candidates
         .filter((candidate) => !candidate.status.includes("Offer"))
-        .filter((candidate) => candidate.status !== "面试中")
+        .filter((candidate) => candidate.status !== "面试中");
+
+      if (reviewScope === "manager") {
+        return base.sort((left, right) => right.score - left.score);
+      }
+
+      return base
         .filter((candidate) => !activeInterviewKeys.has(getCandidateKey(candidate)))
-        .sort((left, right) => right.score - left.score),
-    [activeInterviewKeys, candidates],
+        .sort((left, right) => right.score - left.score);
+    },
+    [activeInterviewKeys, candidates, reviewScope],
   );
   const [selectedCandidateId, setSelectedCandidateId] = useState(queueCandidates[0]?.id ?? "");
   const selectedCandidate = queueCandidates.find((candidate) => candidate.id === selectedCandidateId) ?? null;
@@ -169,7 +177,11 @@ export function CandidateReviewWorkbench(props: {
             </button>
           ))
         ) : (
-          <p className="subtle-text">当前没有待经理处理的候选人，导入新简历或补录候选人后会自动进入这里。</p>
+          <p className="subtle-text">
+            {reviewScope === "manager"
+              ? "当前没有待经理判断的候选人。"
+              : "当前没有待经理处理的候选人，导入新简历或补录候选人后会自动进入这里。"}
+          </p>
         )}
       </div>
 

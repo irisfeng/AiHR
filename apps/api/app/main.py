@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from aihr.services.recruitment_ops import (
@@ -22,7 +23,9 @@ from .store import (
     bootstrap_database,
     build_work_queue,
     build_agency_scorecards,
+    build_candidate_export_workbook,
     create_candidate,
+    create_agency_dispatch,
     create_interview,
     create_job,
     create_offer,
@@ -35,9 +38,11 @@ from .store import (
     list_candidate_export_rows,
     get_resume_intake_job,
     generate_requisition_jd,
+    list_agency_dispatches,
     list_candidate_timeline,
     list_candidates,
     list_interviews,
+    list_manager_review_requests,
     list_jobs,
     list_offers,
     list_resume_intake_jobs,
@@ -177,6 +182,13 @@ class RequisitionIntakeCreateRequest(BaseModel):
     raw_request_text: str
 
 
+class AgencyDispatchCreateRequest(BaseModel):
+    job_id: str
+    agency_name: str
+    sent_at_label: str = ""
+    notes: str = ""
+
+
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok", "database": str(get_database_path())}
@@ -304,6 +316,16 @@ def get_candidate_export(connection: sqlite3.Connection = Depends(get_db)) -> di
     return list_candidate_export_rows(connection)
 
 
+@app.get("/api/candidate-export.xlsx")
+def get_candidate_export_xlsx(connection: sqlite3.Connection = Depends(get_db)) -> Response:
+    workbook = build_candidate_export_workbook(connection)
+    return Response(
+        content=workbook,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="aihr-candidate-export.xlsx"'},
+    )
+
+
 @app.get("/api/candidates/{candidate_id}/timeline")
 def get_candidate_timeline(candidate_id: str, connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
     return list_candidate_timeline(connection, candidate_id)
@@ -329,6 +351,27 @@ def post_candidate_review(
 @app.get("/api/interviews")
 def get_interviews(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
     return list_interviews(connection)
+
+
+@app.get("/api/manager-review-requests")
+def get_manager_review_requests(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
+    return list_manager_review_requests(connection)
+
+
+@app.get("/api/agency-dispatches")
+def get_agency_dispatches(connection: sqlite3.Connection = Depends(get_db)) -> list[dict[str, Any]]:
+    return list_agency_dispatches(connection)
+
+
+@app.post("/api/agency-dispatches", status_code=status.HTTP_201_CREATED)
+def post_agency_dispatch(
+    payload: AgencyDispatchCreateRequest,
+    connection: sqlite3.Connection = Depends(get_db),
+) -> dict[str, Any]:
+    try:
+        return create_agency_dispatch(connection, payload.model_dump())
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @app.post("/api/interviews", status_code=status.HTTP_201_CREATED)

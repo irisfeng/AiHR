@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from zipfile import ZipFile
 
+from openpyxl import load_workbook
 from fastapi.testclient import TestClient
 
 from apps.api.app import main, store
@@ -134,6 +135,48 @@ class DirectRebuildApiTests(unittest.TestCase):
         self.assertIn("agencyName", payload[0])
         self.assertIn("resumeCount", payload[0])
         self.assertIn("rating", payload[0])
+
+    def test_create_agency_dispatch_persists_and_is_listed(self):
+        response = self.client.post(
+            "/api/agency-dispatches",
+            json={
+                "job_id": "job-backend-01",
+                "agency_name": "锐仕方达",
+                "sent_at_label": "03-28 14:30",
+                "notes": "优先看 Python 微服务背景。",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["agencyName"], "锐仕方达")
+        self.assertEqual(payload["dispatchStatus"], "已发送")
+
+        listed = self.client.get("/api/agency-dispatches")
+        self.assertEqual(listed.status_code, 200)
+        self.assertTrue(any(item["id"] == payload["id"] for item in listed.json()))
+
+    def test_manager_review_requests_lists_pending_candidates(self):
+        response = self.client.get("/api/manager-review-requests")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertGreaterEqual(len(payload), 1)
+        self.assertIn("candidateName", payload[0])
+        self.assertEqual(payload[0]["status"], "待经理复核")
+
+    def test_candidate_export_xlsx_downloads_workbook(self):
+        response = self.client.get("/api/candidate-export.xlsx")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            response.headers["content-type"],
+        )
+        workbook = load_workbook(io.BytesIO(response.content))
+        sheet = workbook.active
+        self.assertEqual(sheet["A1"].value, "候选人编号")
+        self.assertGreaterEqual(sheet.max_row, 2)
 
     def test_create_candidate_persists_to_subsequent_reads(self):
         created = self.client.post(

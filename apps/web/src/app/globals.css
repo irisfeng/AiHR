@@ -266,6 +266,11 @@ button {
   cursor: pointer;
 }
 
+.export-button {
+  width: 100%;
+  justify-content: center;
+}
+
 .hero-card {
   display: flex;
   justify-content: space-between;
@@ -404,6 +409,27 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.split-workbench,
+.export-summary-grid,
+.agency-scorecard__metrics {
+  display: grid;
+  gap: 16px;
+}
+
+.split-workbench {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+}
+
+.export-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.agency-scorecard__metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
 }
 
 .queue-group {
@@ -791,7 +817,10 @@ button {
   .dashboard-grid,
   .candidate-card__body,
   .queue-board,
-  .split-grid--support {
+  .split-grid--support,
+  .split-workbench,
+  .export-summary-grid,
+  .agency-scorecard__metrics {
     grid-template-columns: 1fr;
   }
 

@@ -7,8 +7,11 @@ import sqlite3
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from typing import Any
+
+from openpyxl import Workbook
 
 from aihr.services.recruitment_ops import (
     build_requisition_payload,
@@ -83,6 +86,18 @@ def bootstrap_database() -> None:
                 missing_fields_json TEXT NOT NULL,
                 jd_text TEXT NOT NULL,
                 linked_job_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS agency_dispatches (
+                id TEXT PRIMARY KEY,
+                job_id TEXT NOT NULL,
+                agency_name TEXT NOT NULL,
+                dispatch_status TEXT NOT NULL,
+                sent_at_label TEXT NOT NULL,
+                first_resume_at_label TEXT NOT NULL,
+                notes TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
@@ -692,6 +707,128 @@ def build_agency_scorecards(connection: sqlite3.Connection) -> list[dict[str, An
         )
 
     return sorted(scorecards, key=lambda item: (-item["resumeCount"], item["agencyName"]))
+
+
+def list_agency_dispatches(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """
+        SELECT * FROM agency_dispatches
+        ORDER BY updated_at DESC, created_at DESC
+        """
+    ).fetchall()
+    return [_agency_dispatch_from_row(row) for row in rows]
+
+
+def create_agency_dispatch(connection: sqlite3.Connection, payload: Mapping[str, Any]) -> dict[str, Any]:
+    job_row = connection.execute("SELECT * FROM jobs WHERE id = ?", (str(payload.get("job_id") or "").strip(),)).fetchone()
+    if not job_row:
+        raise LookupError(f"Job not found: {payload.get('job_id')}")
+
+    now = _now_iso()
+    dispatch_id = payload.get("id") or f"dispatch-{datetime.now().strftime('%Y%m%d%H%M%S%f')[-12:]}"
+    record = {
+        "id": dispatch_id,
+        "job_id": job_row["id"],
+        "agency_name": str(payload.get("agency_name") or "待确认代理商").strip(),
+        "dispatch_status": str(payload.get("dispatch_status") or "已发送").strip(),
+        "sent_at_label": str(payload.get("sent_at_label") or _updated_label()).strip(),
+        "first_resume_at_label": str(payload.get("first_resume_at_label") or "").strip(),
+        "notes": str(payload.get("notes") or "").strip(),
+    }
+    connection.execute(
+        """
+        INSERT INTO agency_dispatches (
+            id, job_id, agency_name, dispatch_status, sent_at_label, first_resume_at_label, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            record["id"],
+            record["job_id"],
+            record["agency_name"],
+            record["dispatch_status"],
+            record["sent_at_label"],
+            record["first_resume_at_label"],
+            record["notes"],
+            now,
+            now,
+        ),
+    )
+    connection.execute(
+        """
+        UPDATE jobs
+        SET stage = ?, updated_at = ?, updated_at_label = ?
+        WHERE id = ?
+        """,
+        ("代理寻访中", now, _updated_label(), record["job_id"]),
+    )
+    connection.commit()
+    return _agency_dispatch_from_row(connection.execute("SELECT * FROM agency_dispatches WHERE id = ?", (dispatch_id,)).fetchone())
+
+
+def list_manager_review_requests(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    candidates = [item for item in list_candidates(connection) if item["status"] == "待经理复核"]
+    return [
+        {
+            "id": f"review-{item['id']}",
+            "candidateId": item["id"],
+            "candidateName": item["name"],
+            "role": item["role"],
+            "status": item["status"],
+            "hrNote": item["nextAction"],
+            "score": item["score"],
+            "skills": item["skills"],
+            "highlights": item["highlights"],
+            "risks": item["risks"],
+        }
+        for item in candidates
+    ]
+
+
+def build_candidate_export_workbook(connection: sqlite3.Connection) -> bytes:
+    rows = list_candidate_export_rows(connection)["rows"]
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "候选人总表"
+    headers = [
+        "候选人编号",
+        "姓名",
+        "应聘岗位",
+        "来源渠道",
+        "代理商",
+        "收到简历日期",
+        "AI 初筛结果",
+        "用人经理复核结果",
+        "面试轮次与结果",
+        "最终去向",
+        "薪酬结果",
+        "当前状态",
+        "备注",
+        "最后更新时间",
+    ]
+    sheet.append(headers)
+    for row in rows:
+        sheet.append(
+            [
+                row["candidateId"],
+                row["name"],
+                row["jobTitle"],
+                row["source"],
+                row["agency"],
+                row["receivedAt"],
+                row["aiScreeningResult"],
+                row["managerReviewResult"],
+                row["interviewStages"],
+                row["finalStatus"],
+                row["salaryResult"],
+                row["currentStatus"],
+                row["remarks"],
+                row["updatedAt"],
+            ]
+        )
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
 
 
 def build_work_queue(connection: sqlite3.Connection) -> dict[str, Any]:
@@ -1496,6 +1633,18 @@ def _requisition_intake_from_row(row: sqlite3.Row) -> dict[str, Any]:
         "missingFields": _json_load(row["missing_fields_json"]),
         "jdText": row["jd_text"],
         "linkedJobId": row["linked_job_id"],
+    }
+
+
+def _agency_dispatch_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "jobId": row["job_id"],
+        "agencyName": row["agency_name"],
+        "dispatchStatus": row["dispatch_status"],
+        "sentAtLabel": row["sent_at_label"],
+        "firstResumeAtLabel": row["first_resume_at_label"],
+        "notes": row["notes"],
     }
 
 
